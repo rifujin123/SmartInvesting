@@ -1,0 +1,159 @@
+### Dữ liệu mẫu — kiểm tra đồng bộ Wallet.Balance
+### Điền @token sau login. Điền @walletId sau POST ví. Điền @categoryIncomeId, @categoryExpenseId từ GET categories.
+### Điền @assetId từ GET assets (hoặc tạo asset trước). Transaction POST/PUT/DELETE cần JWT có role Admin.
+###
+### Gán Admin (SQL Server, DB Identity — thay UserName):
+###   IF NOT EXISTS (SELECT 1 FROM AspNetRoles WHERE NormalizedName = N'ADMIN')
+###     INSERT INTO AspNetRoles (Id, Name, NormalizedName, ConcurrencyStamp) VALUES (NEWID(), N'Admin', N'ADMIN', NEWID());
+###   INSERT INTO AspNetUserRoles (UserId, RoleId)
+###   SELECT u.Id, r.Id FROM AspNetUsers u CROSS JOIN AspNetRoles r
+###   WHERE u.NormalizedUserName = N'TESTBALANCE' AND r.NormalizedName = N'ADMIN';
+
+@baseUrl = https://localhost:7186
+@token = 
+@walletId = 00000000-0000-0000-0000-000000000000
+@categoryIncomeId = 1
+@categoryExpenseId = 2
+@assetId = 1
+@transactionId = 00000000-0000-0000-0000-000000000000
+@incomeEventId = 00000000-0000-0000-0000-000000000000
+
+### --- Auth ---
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "testbalance",
+  "email": "testbalance@example.com",
+  "password": "Test@123456"
+}
+
+### @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "testbalance",
+  "password": "Test@123456"
+}
+
+### --- Tham chiếu (lấy id thật) ---
+GET {{baseUrl}}/api/categories
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/assets
+Authorization: Bearer {{token}}
+
+### --- Ví: số dư khởi tạo 1_000_000 (sau các bước dưới có thể đối chiếu) ---
+POST {{baseUrl}}/api/wallets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ví test balance",
+  "balance": 1000000,
+  "currency": "VND"
+}
+
+### Kiểm tra balance hiện tại
+GET {{baseUrl}}/api/wallets/{{walletId}}
+Authorization: Bearer {{token}}
+
+### --- Transaction (Admin): Income +500_000 → balance kỳ vọng: 1_500_000 ---
+POST {{baseUrl}}/api/wallets/{{walletId}}/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "categoryId": {{categoryIncomeId}},
+  "amount": 500000,
+  "note": "Lương thử nghiệm",
+  "assetId": null
+}
+
+### --- Transaction (Admin): Expense 200_000 → kỳ vọng: 1_300_000 ---
+POST {{baseUrl}}/api/wallets/{{walletId}}/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "categoryId": {{categoryExpenseId}},
+  "amount": 200000,
+  "note": "Chi tiêu test",
+  "assetId": null
+}
+
+### --- Transaction (Admin): sửa số tiền (ví dụ Expense 200k → 150k) → balance +50_000 ---
+PUT {{baseUrl}}/api/wallets/{{walletId}}/transactions/{{transactionId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "categoryId": {{categoryExpenseId}},
+  "amount": 150000,
+  "transactionDate": "2026-04-05T10:00:00Z",
+  "note": "Điều chỉnh amount",
+  "assetId": null
+}
+
+### --- Transaction (Admin): xóa → đảo hiệu ứng category đó ---
+DELETE {{baseUrl}}/api/wallets/{{walletId}}/transactions/{{transactionId}}
+Authorization: Bearer {{token}}
+
+### --- Investment order: Buy 10 @ 1000, fee 50 → trừ 10_050 ---
+POST {{baseUrl}}/api/investment-orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "walletId": "{{walletId}}",
+  "assetId": {{assetId}},
+  "quantity": 10,
+  "price": 1000,
+  "fee": 50,
+  "orderType": 0
+}
+
+### --- Investment order: Sell 4 @ 1200, fee 20 → cộng 4*1200-20 = 4780 ---
+POST {{baseUrl}}/api/investment-orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "walletId": "{{walletId}}",
+  "assetId": {{assetId}},
+  "quantity": 4,
+  "price": 1200,
+  "fee": 20,
+  "orderType": 1
+}
+
+### --- Income event: Dividend (type=0) +25_000 ---
+POST {{baseUrl}}/api/wallets/{{walletId}}/income-events
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "assetId": {{assetId}},
+  "type": 0,
+  "amount": 25000,
+  "eventDate": "2026-04-05T00:00:00Z",
+  "note": "Cổ tức mẫu"
+}
+
+### --- Income event: sửa amount 25k → 40k → balance +15_000 ---
+PUT {{baseUrl}}/api/wallets/{{walletId}}/income-events/{{incomeEventId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "assetId": {{assetId}},
+  "type": 0,
+  "amount": 40000,
+  "eventDate": "2026-04-05T00:00:00Z",
+  "note": "Điều chỉnh cổ tức"
+}
+
+### --- Income event: soft delete → trừ amount hiện tại ---
+DELETE {{baseUrl}}/api/wallets/{{walletId}}/income-events/{{incomeEventId}}
+Authorization: Bearer {{token}}

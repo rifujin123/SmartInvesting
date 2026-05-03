@@ -1,0 +1,2181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Học React Native (JavaScript) từ con số 0 — + Mẫu UI hiện đại</title>
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: #18181b;
+      --elevated: #27272a;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --accent: #22d3ee;
+      --accent-dim: #0891b2;
+      --border: #3f3f46;
+      --success: #4ade80;
+      --danger: #f87171;
+      --radius: 12px;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(1200px 800px at 10% -10%, rgba(34, 211, 238, 0.12), transparent),
+        radial-gradient(900px 600px at 90% 0%, rgba(168, 85, 247, 0.08), transparent),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 16px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 4rem;
+      gap: 1.5rem;
+    }
+    @media (min-width: 880px) {
+      .layout {
+        grid-template-columns: 260px minmax(0, 1fr);
+        align-items: start;
+      }
+    }
+    aside.toc-wrap {
+      position: sticky;
+      top: 0.75rem;
+      align-self: start;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(24, 24, 27, 0.85);
+      backdrop-filter: blur(12px);
+    }
+    aside.toc-wrap h2 { margin: 0 0 0.75rem; font-size: 0.95rem; color: var(--muted); font-weight: 600; letter-spacing: 0.03em; }
+    .toc {
+      margin: 0;
+      padding-left: 1rem;
+      font-size: 0.88rem;
+    }
+    .toc li { margin: 0.35rem 0; color: #d4d4d8; }
+    .toc a { color: #e4e4e7; font-weight: 500; }
+    main { min-width: 0; }
+    header.hero {
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+    header.hero h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    header.hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 62ch;
+    }
+    article section {
+      margin-bottom: 2.75rem;
+    }
+    article h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 2rem 0 0.75rem;
+      color: #f4f4f5;
+      letter-spacing: -0.02em;
+    }
+    article h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.5rem;
+      color: var(--accent);
+    }
+    article p, article li {
+      color: #d4d4d8;
+      max-width: 72ch;
+    }
+    ul { padding-left: 1.35rem; }
+    li + li { margin-top: 0.35rem; }
+    code, .mono {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.875em;
+    }
+    code {
+      background: var(--elevated);
+      padding: 0.12em 0.4em;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    pre {
+      margin: 1rem 0;
+      padding: 1rem 1.15rem;
+      overflow-x: auto;
+      border-radius: var(--radius);
+      background: #0c0c0f;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      font-size: 0.85rem;
+      line-height: 1.55;
+    }
+    pre code {
+      padding: 0;
+      border: none;
+      background: transparent;
+      font-size: inherit;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: rgba(34, 211, 238, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(34, 211, 238, 0.35);
+    }
+    .callout {
+      border-left: 3px solid var(--accent-dim);
+      padding: 0.85rem 1rem;
+      margin: 1rem 0;
+      background: rgba(39, 39, 42, 0.6);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: #e4e4e7;
+      font-size: 0.95rem;
+    }
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 2.5rem 0;
+    }
+
+    /* —— DEMO: faux phone frame —— */
+    .demo-grid {
+      display: grid;
+      gap: 1.25rem;
+      margin-top: 1rem;
+    }
+    @media (min-width: 720px) {
+      .demo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .phone {
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      overflow: hidden;
+      background: #101012;
+      box-shadow: var(--shadow);
+      max-width: 360px;
+      width: 100%;
+    }
+    .phone-notch {
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #101012;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.2em;
+    }
+    .phone-notch span {
+      width: 72px;
+      height: 6px;
+      background: #27272a;
+      border-radius: 999px;
+    }
+
+    /* Tab bar trong demo */
+    .demo-screen {
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #18181b 0%, #0c0c0f 55%);
+      position: relative;
+    }
+    .demo-body {
+      flex: 1;
+      padding: 12px 16px 76px;
+    }
+    .demo-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px calc(12px + env(safe-area-inset-top));
+      padding-top: max(10px, env(safe-area-inset-top));
+      background: rgba(16, 16, 18, 0.55);
+      backdrop-filter: saturate(140%) blur(16px);
+      -webkit-backdrop-filter: saturate(140%) blur(16px);
+      border-bottom: 1px solid rgba(63, 63, 70, 0.5);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .demo-back {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(39, 39, 42, 0.8);
+      color: var(--text);
+      cursor: default;
+      display: grid;
+      place-items: center;
+      font-size: 1rem;
+    }
+    .demo-title-stack { flex: 1; min-width: 0; }
+    .demo-title-stack strong {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .demo-title-stack small {
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+    .demo-action {
+      width: 38px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(39, 39, 42, 0.5);
+      color: var(--text);
+      cursor: default;
+    }
+
+    .demo-cards {
+      display: grid;
+      gap: 10px;
+    }
+    .demo-card {
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(63, 63, 70, 0.6);
+      background: radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.15), transparent 55%),
+        rgba(24, 24, 27, 0.9);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+    }
+    .demo-card h4 {
+      margin: 0;
+      font-size: 0.85rem;
+    }
+    .demo-card p {
+      margin: 4px 0 0;
+      font-size: 0.74rem;
+      color: var(--muted);
+      max-width: none;
+    }
+
+    .demo-tabbar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(22, 22, 26, 0.72);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      border-top: 1px solid rgba(63, 63, 70, 0.45);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+    .demo-tabbar-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .demo-screen-b {
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #18181b 0%, #0c0c0f 50%);
+      position: relative;
+      flex: 1;
+      min-height: 0;
+    }
+    .safe-edge-hint {
+      font-size: 0.58rem;
+      color: #7dd3fc;
+      text-align: center;
+      padding: 6px 8px 8px;
+      background: rgba(34, 211, 238, 0.07);
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.25);
+      letter-spacing: 0.04em;
+    }
+    .demo-header-simple {
+      padding: 8px 14px 12px;
+      border-bottom: 1px solid rgba(63, 63, 70, 0.45);
+      background: rgba(16, 16, 18, 0.4);
+    }
+    .demo-header-simple h4 {
+      margin: 0;
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #fafafa;
+    }
+    .demo-header-simple p {
+      margin: 4px 0 0;
+      font-size: 0.7rem;
+      color: var(--muted);
+      max-width: none;
+    }
+    .demo-scroll-inner {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 10px 0 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .demo-scroll-inner::-webkit-scrollbar { width: 4px; }
+    .demo-scroll-inner::-webkit-scrollbar-thumb {
+      background: rgba(63, 63, 70, 0.9);
+      border-radius: 999px;
+    }
+    .demo-row-line {
+      padding: 11px 13px;
+      margin: 0 12px 8px;
+      border-radius: 12px;
+      background: rgba(39, 39, 42, 0.55);
+      border: 1px solid rgba(63, 63, 70, 0.55);
+      font-size: 0.74rem;
+      color: var(--muted);
+    }
+    .demo-row-line strong {
+      display: block;
+      font-size: 0.8rem;
+      color: #f4f4f5;
+      margin-bottom: 2px;
+    }
+    .demo-fab-mini {
+      position: absolute;
+      right: 14px;
+      bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(145deg, #22d3ee, #6366f1);
+      color: #020617;
+      font-size: 1.35rem;
+      font-weight: 300;
+      box-shadow: 0 12px 28px rgba(99, 102, 241, 0.35);
+      display: grid;
+      place-items: center;
+      cursor: default;
+      line-height: 1;
+    }
+
+    .one-screen-demo-wrap {
+      display: grid;
+      gap: 1.35rem;
+      margin: 1.1rem 0 1.75rem;
+      align-items: start;
+    }
+    @media (min-width: 920px) {
+      .one-screen-demo-wrap {
+        grid-template-columns: minmax(0, 393px) minmax(0, 1fr);
+      }
+    }
+
+    /*
+      Mock #demo-one-screen theo kích thước logic iPhone 15 (Apple Human Interface Guidelines):
+      portrait 393 × 852 pt → aspect-ratio CSS = width / height = 393 / 852.
+    */
+    #demo-one-screen figure.phone {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: min(393px, 100%);
+      aspect-ratio: 393 / 852;
+      min-height: 0;
+      height: auto;
+    }
+    #demo-one-screen figure.phone > .demo-screen.demo-screen-b {
+      flex: 1;
+      min-height: 0;
+      padding-bottom: 76px;
+    }
+    #demo-one-screen .demo-scroll-inner {
+      flex: 1;
+      max-height: none;
+    }
+    .screen-legend-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.9rem 1rem 1rem;
+      background: rgba(24, 24, 27, 0.72);
+    }
+    .screen-legend-card h4 {
+      margin: 0 0 0.35rem;
+      font-size: 0.95rem;
+      color: #e4e4e7;
+      font-weight: 700;
+    }
+    .screen-legend-card > p {
+      margin: 0 0 0.85rem;
+      font-size: 0.84rem;
+      color: var(--muted);
+      max-width: none;
+    }
+    .legend-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(63, 63, 70, 0.45);
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      align-items: start;
+    }
+    .legend-row:last-of-type { border-bottom: none; }
+    .lib-pill {
+      font-family: ui-monospace, monospace;
+      font-size: 0.65rem;
+      padding: 5px 8px;
+      border-radius: 8px;
+      background: rgba(34, 211, 238, 0.11);
+      color: #7dd3fc;
+      border: 1px solid rgba(34, 211, 238, 0.32);
+      white-space: nowrap;
+      line-height: 1.3;
+    }
+
+    .demo-tab {
+      border: none;
+      background: transparent;
+      padding: 6px 4px;
+      border-radius: 12px;
+      color: var(--muted);
+      font-size: 0.65rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.15s ease, background 0.15s ease;
+      font-family: inherit;
+    }
+    .demo-tab:hover { color: #e4e4e7; }
+    .demo-tab.is-active {
+      color: var(--accent);
+      background: rgba(34, 211, 238, 0.1);
+    }
+    .demo-tab .icon-pill {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(39, 39, 42, 0.6);
+      font-size: 0.95rem;
+    }
+    .demo-tab.is-active .icon-pill {
+      background: rgba(34, 211, 238, 0.22);
+      box-shadow: 0 8px 20px rgba(34, 211, 238, 0.25);
+    }
+
+    .fab-wrap {
+      position: absolute;
+      right: 16px;
+      bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+    .demo-fab {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      border: none;
+      background: linear-gradient(145deg, #22d3ee, #0891b2);
+      color: #020617;
+      font-size: 1.55rem;
+      font-weight: 300;
+      line-height: 1;
+      box-shadow: 0 16px 35px rgba(34, 211, 238, 0.45);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    /* List row demo */
+    .list-demo {
+      max-width: 360px;
+    }
+    .list-row {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background: transparent;
+      margin-bottom: 6px;
+    }
+    .list-row:hover {
+      background: rgba(39, 39, 42, 0.45);
+      border-color: rgba(63, 63, 70, 0.5);
+    }
+    .list-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #a855f7, #6366f1);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: white;
+    }
+    .list-title { margin: 0; font-weight: 600; font-size: 0.9rem; }
+    .list-sub { margin: 2px 0 0; font-size: 0.75rem; color: var(--muted); max-width: none; }
+    .list-meta { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+
+    /* —— playgrounds: hooks & style —— */
+    .play-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(24, 24, 27, 0.75);
+      padding: 1.1rem 1.15rem;
+      margin: 1rem 0 1.5rem;
+    }
+    .play-card h4 {
+      margin: 0 0 0.6rem;
+      font-size: 1rem;
+      color: var(--accent);
+    }
+    .play-card > p.intro {
+      margin: 0 0 0.75rem;
+      font-size: 0.92rem;
+      color: var(--muted);
+      max-width: none;
+    }
+    .pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0.5rem 0 0.75rem;
+    }
+    .pill-btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--elevated);
+      color: #e4e4e7;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .pill-btn:hover { border-color: var(--accent); color: #fafafa; }
+    .pill-btn.is-on {
+      background: rgba(34, 211, 238, 0.18);
+      border-color: rgba(34, 211, 238, 0.5);
+      color: var(--accent);
+    }
+    .stat-tag {
+      display: inline-flex;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      background: #27272a;
+      border: 1px solid var(--border);
+      color: #fafafa;
+    }
+    .stat-tag.good { border-color: rgba(74, 222, 128, 0.45); color: #86efac; }
+    .stat-tag.dim { color: var(--muted); font-weight: 500; }
+
+    .flex-demo-box {
+      min-height: 88px;
+      padding: 10px;
+      border-radius: 12px;
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(39, 39, 42, 0.5),
+        rgba(39, 39, 42, 0.5) 6px,
+        rgba(63, 63, 70, 0.35) 6px,
+        rgba(63, 63, 70, 0.35) 12px
+      );
+      border: 1px dashed rgba(148, 163, 184, 0.45);
+      display: flex;
+      flex-direction: row;
+      gap: 0;
+      transition: justify-content 0.2s ease, align-items 0.2s ease;
+    }
+    .flex-demo-box.flex-jc-fs { justify-content: flex-start; }
+    .flex-demo-box.flex-jc-c { justify-content: center; }
+    .flex-demo-box.flex-jc-sb { justify-content: space-between; }
+    .flex-demo-box.flex-jc-sa { justify-content: space-around; }
+    .flex-demo-box.flex-jc-se { justify-content: space-evenly; }
+    .flex-demo-box.flex-jc-fe { justify-content: flex-end; }
+    .flex-mini {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #22d3ee, #6366f1);
+      flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(34, 211, 238, 0.35);
+    }
+    .flex-demo-caption {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 0.35rem 0 0;
+      font-family: ui-monospace, monospace;
+      word-break: break-all;
+      max-width: none;
+    }
+
+    .flex-col-demo {
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(12, 12, 15, 0.9);
+      border: 1px solid var(--border);
+      gap: 8px;
+      justify-content: center;
+      align-items: stretch;
+      transition: align-items 0.2s ease;
+    }
+    .flex-col-demo.align-center { align-items: center; }
+    .flex-col-demo.align-end { align-items: flex-end; }
+    .flex-col-demo.align-stretch { align-items: stretch; }
+    .align-pill {
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(34, 211, 238, 0.28);
+      border: 1px solid rgba(34, 211, 238, 0.6);
+      display: grid;
+      place-items: center;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .flex-col-demo.align-stretch .align-pill {
+      align-self: stretch;
+      width: auto;
+      min-height: 28px;
+    }
+    .flex-col-demo.align-center .align-pill,
+    .flex-col-demo.align-end .align-pill {
+      width: 88px;
+    }
+
+    .pm-visual {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    @media (min-width: 620px) {
+      .pm-visual { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .pm-stage {
+      position: relative;
+      padding: 24px;
+      border-radius: 14px;
+      background: rgba(63, 63, 70, 0.35);
+      border: 1px solid var(--border);
+    }
+    .pm-margin-zone {
+      background: rgba(248, 113, 113, 0.12);
+      outline: 2px dashed rgba(248, 113, 113, 0.5);
+      outline-offset: -2px;
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .pm-padding-zone {
+      background: rgba(74, 222, 128, 0.12);
+      outline: 2px dashed rgba(74, 222, 128, 0.5);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .pm-content {
+      background: var(--elevated);
+      padding: 10px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fafafa;
+    }
+    .pm-tag {
+      position: absolute;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .pm-tag.ma { top: 6px; left: 8px; color: #fca5a5; }
+    .pm-tag.pa { top: 32px; right: 8px; color: #86efac; }
+
+    .radius-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 0.65rem;
+    }
+    .radius-box {
+      width: 72px;
+      height: 56px;
+      background: linear-gradient(135deg, #22d3ee, #a855f7);
+      border: none;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 6px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #09090b;
+    }
+    .radius-box.r4 { border-radius: 4px; }
+    .radius-box.r16 { border-radius: 16px; }
+    .radius-box.rfull { border-radius: 999px; width: 88px; }
+
+    .gap-row-demo {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: var(--gap-play, 8px);
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(12, 12, 15, 0.85);
+      border: 1px solid var(--border);
+      margin: 0.5rem 0 0;
+    }
+    .gap-chip {
+      width: 42px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(34, 211, 238, 0.35);
+      border: 1px solid rgba(34, 211, 238, 0.6);
+    }
+
+    .flex1-row {
+      display: flex;
+      flex-direction: row;
+      height: 54px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-top: 0.5rem;
+    }
+    .flex1-fixed {
+      width: 72px;
+      background: rgba(168, 85, 247, 0.35);
+      display: grid;
+      place-items: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #fafafa;
+    }
+    .flex1-grow {
+      flex: 1;
+      background: rgba(34, 211, 238, 0.2);
+      display: grid;
+      place-items: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 0;
+    }
+
+    .layer-stack {
+      position: relative;
+      height: 100px;
+      margin-top: 0.65rem;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: linear-gradient(120deg, #18181b, #27272a);
+    }
+    .layer-a {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 70% 30%, rgba(34, 211, 238, 0.45), transparent 55%);
+    }
+    .layer-b {
+      position: absolute;
+      inset: auto 16px 12px;
+      padding: 10px;
+      border-radius: 14px;
+      background: rgba(15, 15, 18, 0.55);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 0.78rem;
+      color: #e4e4e7;
+    }
+
+    .hook-log {
+      margin-top: 0.65rem;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #0c0c0f;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, monospace;
+      font-size: 0.72rem;
+      color: #a1a1aa;
+      max-height: 90px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    /* Roadmap Zero → Hero */
+    .road-lead {
+      font-size: 1.02rem;
+      color: #cbd5e1;
+      max-width: 70ch;
+      margin: 0 0 1.5rem;
+      line-height: 1.65;
+    }
+    .road-phase-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin: 1.25rem 0 1.75rem;
+    }
+    @media (min-width: 900px) {
+      .road-phase-wrap {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+      }
+    }
+    .road-phase {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+      background: rgba(24, 24, 27, 0.65);
+      position: relative;
+      overflow: hidden;
+    }
+    .road-phase::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), #a855f7);
+      opacity: 0.85;
+    }
+    .road-phase-badge {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+    }
+    .road-phase h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1.05rem;
+      color: #f4f4f5;
+      font-weight: 700;
+    }
+    .road-phase ul {
+      margin: 0;
+      padding-left: 1.2rem;
+      font-size: 0.88rem;
+      color: #cbd5e1;
+    }
+    .road-phase ul li { margin: 0.3rem 0; }
+    .road-phase a { font-weight: 600; }
+    .road-table-wrap { overflow-x: auto; margin: 1rem 0 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
+    .road-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      min-width: 640px;
+    }
+    .road-table th, .road-table td {
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(63, 63, 70, 0.65);
+    }
+    .road-table th {
+      background: rgba(34, 211, 238, 0.08);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .road-table td { color: #d4d4d8; }
+    .road-table td:first-child { font-weight: 700; color: #f4f4f5; white-space: nowrap; }
+    .road-scale {
+      margin: 1.5rem 0 0.5rem;
+      padding: 1rem 1.15rem;
+      border-radius: var(--radius);
+      background: rgba(12, 12, 15, 0.9);
+      border: 1px solid var(--border);
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: #a1a1aa;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    footer{
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc-wrap">
+      <h2>Mục lục</h2>
+      <ol class="toc">
+        <li><a href="#roadmap">Roadmap Zero → Hero</a></li>
+        <li><a href="#zero">React Native là gì</a></li>
+        <li><a href="#js">JavaScript cần thiết</a></li>
+        <li><a href="#react">React căn bản</a></li>
+        <li><a href="#props-advanced">Truyền props (mở rộng)</a></li>
+        <li><a href="#visual-hooks">Hooks — demo tương tác</a></li>
+        <li><a href="#rn-core">RN: View &amp; bố cục</a></li>
+        <li><a href="#style-rn">Style trong RN vs CSS web</a></li>
+        <li><a href="#visual-style-guide">Style phổ biến — thử trực tiếp</a></li>
+        <li><a href="#nav">Điều hướng &amp; cấu trúc app</a></li>
+        <li><a href="#expo-tooling">Expo &amp; công cụ</a></li>
+        <li><a href="#demo-one-screen">Demo 1 screen + thư viện</a></li>
+        <li><a href="#css-modern">Mẫu UI hiện đại (CSS)</a></li>
+        <li><a href="#mastery-ui">Thành thạo UI — lộ trình nâng cao</a></li>
+        <li><a href="#data-and-api">Dữ liệu &amp; gọi API</a></li>
+        <li><a href="#map">Ánh xạ RN ↔ CSS demo</a></li>
+      </ol>
+    </aside>
+
+    <main>
+      <header class="hero">
+        <span class="badge">Tự học</span>
+        <h1>Học React Native (JavaScript) từ con số 0</h1>
+        <p>
+          Trang độc lập: lộ trình <strong>Zero → Hero</strong> (từ JS/React tới UI “đủ chuyên”, rồi tới <strong>fetch API</strong>),
+          kèm ví dụ và demo tương tác trong trình duyệt cho style &amp; hook. Bắt đầu từ mục
+          <a href="#roadmap">Roadmap Zero → Hero</a> dưới đây.
+        </p>
+      </header>
+
+      <article>
+        <section id="roadmap">
+          <h2>Roadmap: từ Zero → Hero (UI → dữ liệu &amp; API)</h2>
+          <p class="road-lead">
+            Dưới đây là lộ trình gói gọn: bạn học theo thứ tự từ trái sang phải / từ trên xuống.
+            Phần trong <strong>file này</strong> có link đến từng mục; phần đánh dấu <em>bên ngoài</em> là bài tập trong dự án Expo thật của bạn (tạo repo, cài package, chạy máy thật/emulator).
+          </p>
+
+          <div class="road-phase-wrap">
+            <div class="road-phase">
+              <div class="road-phase-badge">Zero — nền</div>
+              <h3>Củng cố nền tảng</h3>
+              <ul>
+                <li><a href="#zero">RN là gì · Expo</a></li>
+                <li><a href="#js">JS cần thiết</a> (async/await, module)</li>
+                <li><a href="#react">React: component, JSX</a></li>
+                <li><a href="#props-advanced">Props mở rộng</a></li>
+                <li><a href="#visual-hooks">Hooks — demo tay</a></li>
+                <li><em>Dự án:</em> <code>npx create-expo-app</code>, chạy trên điện thoại</li>
+              </ul>
+            </div>
+            <div class="road-phase">
+              <div class="road-phase-badge">Builder — UI</div>
+              <h3>Mastering layout &amp; UI</h3>
+              <ul>
+                <li><a href="#rn-core">View, Text, lists</a></li>
+                <li><a href="#style-rn">StyleSheet &amp; Flexbox</a></li>
+                <li><a href="#visual-style-guide">Thử justify / align / gap</a></li>
+                <li><a href="#nav">Tabs + Stack</a></li>
+                <li><a href="#demo-one-screen">Mock 1 screen + Safe Area</a></li>
+                <li><a href="#css-modern">Mô hình UI hiện đại</a></li>
+                <li><a href="#mastery-ui">Checklist UI nâng cao</a></li>
+              </ul>
+            </div>
+            <div class="road-phase">
+              <div class="road-phase-badge">Hero — dữ liệu</div>
+              <h3>Fetch, auth, sản phẩm</h3>
+              <ul>
+                <li><a href="#data-and-api">Gọi API</a> — <code>fetch</code> rồi <strong>Axios</strong> (cùng mục)</li>
+                <li><em>Thư viện:</em> <code>@tanstack/react-query</code> (tuỳ chọn)</li>
+                <li><em>Build:</em> EAS Build, store (sau cùng)</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Bảng tiến độ (gợi ý thời gian — tự chỉnh)</h3>
+          <div class="road-table-wrap">
+            <table class="road-table">
+              <thead>
+                <tr>
+                  <th>Giai đoạn</th>
+                  <th>Bạn làm được</th>
+                  <th>Trên trang này / ngoài repo</th>
+                  <th>Gợi ý</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Tuần 1 — Zero</td>
+                  <td>Chạy được app trắng, sửa JSX, hiểu component + state</td>
+                  <td><a href="#react">React</a>, <a href="#visual-hooks">hooks demo</a> · Expo Go + Metro</td>
+                  <td>1–2 giờ/ngày</td>
+                </tr>
+                <tr>
+                  <td>Tuần 2–3 — Layout</td>
+                  <td>Bố cục màn login, list row, card; cuộn không vỡ layout</td>
+                  <td><a href="#style-rn">Style</a>, <a href="#visual-style-guide">flex demo</a>, <a href="#css-modern">mock phone</a></td>
+                  <td>Áp Safe Area; tránh hardcode height</td>
+                </tr>
+                <tr>
+                  <td>Tuần 4 — Điều hướng</td>
+                  <td>4 tab + stack chi tiết; truyền params màn hình</td>
+                  <td><a href="#nav">React Navigation</a> · cài trong dự án</td>
+                  <td>Đọc docs “Getting started” bản mới</td>
+                </tr>
+                <tr>
+                  <td>Tuần 5–6 — UI xịn</td>
+                  <td>Modal, refresh, empty/loading, form, ảnh, keyboard</td>
+                  <td><a href="#mastery-ui">Mục mastery UI</a> · thực hành trong app</td>
+                  <td>Copy pattern từ design system (hoặc học 1 lib UI)</td>
+                </tr>
+                <tr>
+                  <td>Tuần 7+ — API Hero</td>
+                  <td>GET/POST JSON, header Authorization, lưu token, xử lý 401</td>
+                  <td><a href="#data-and-api">Fetch + mẫu Screen</a></td>
+                  <td>Thêm TanStack Query khi API nhiều màn</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Luồng tổng thể (từ tay người dùng đến server)</h3>
+          <pre class="road-scale">Màn hình (Pressable, TextInput)
+    → state trong component (useState) hoặc cache (React Query)
+    → service gọi fetch / axios (baseURL, headers, JSON)
+    → API trả dữ liệu / lỗi
+    → cập nhật UI: loading → data / error → retry</pre>
+
+          <div class="callout" style="margin-top: 1rem;">
+            <strong>Ghi nhớ:</strong> Hero không phải “biết hết thư viện”, mà là tự tin lắp được
+            <strong>UI ổn + luồng dữ liệu rõ</strong> (load / error / empty) và triển khai build thật khi cần.
+          </div>
+
+          <h3>Sau Hero (tuỳ chọn — không cần thứ tự cố định)</h3>
+          <ul>
+            <li><strong>TypeScript</strong>: thêm vào Expo cho autocompletion DTO/backend.</li>
+            <li><strong>EAS Update / Build</strong>: bản cài store &amp; OTA của Expo.</li>
+            <li><strong>Kiểm thử UI</strong>: Maestro hoặc Detox — sau khi flow login + list đã chạy tay ổn.</li>
+            <li><strong>Native module</strong>: chỉ khi không có expo module tương đương.</li>
+          </ul>
+        </section>
+
+        <section id="zero">
+          <h2>React Native là gì?</h2>
+          <p>
+            <strong>React Native</strong> cho phép bạn viết ứng dụng mobile bằng JavaScript và component kiểu React.
+            Khác với web: không dùng <code>div</code>, <code>span</code>, <code>p</code> — mà dùng <code>View</code>, <code>Text</code>, v.v.
+            Giao diện được “dịch” sang native view trên iOS/Android (hoặc qua engine tuỳ stack bạn chọn).
+          </p>
+          <p>
+            <strong>Expo</strong> là bộ công cụ phổ biến phía trên RN: dễ cài, chạy nhanh trên điện thoại, tích hợp nhiều API thiết bị.
+            Hầu hết người mới nên bắt đầu với Expo (SDK mới).
+          </p>
+        </section>
+
+        <section id="js">
+          <h2>JavaScript cần thiết trước khi vào React</h2>
+          <p>Bạn không cần “thành thạo tất cả”, nhưng nên quen các ý sau:</p>
+          <ul>
+            <li><code>const</code> / <code>let</code>, hàm mũi tên <code>() =&gt; {}</code></li>
+            <li>Xâu và template literal <code>`Chi ${name}`</code></li>
+            <li>Hủy cấu trúc object/array, spread <code>...</code></li>
+            <li>Gọi bất đồng bộ: <code>async</code>/<code>await</code>, <code>fetch</code> (khi học API)</li>
+            <li>Modules: <code>import</code> / <code>export</code></li>
+          </ul>
+          <pre><code>// ví dụ nhanh ES module + async
+import { Platform } from "react-native";
+
+export async function loadJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export const greeting = name =&gt; `Xin chào, ${name}`;</code></pre>
+        </section>
+
+        <section id="react">
+          <h2>React căn bản (đủ để viết RN)</h2>
+          <h3>Component &amp; JSX</h3>
+          <p>Component là hàm trả về “cây JSX” giống HTML nhưng thực chất là lời gọi createElement.</p>
+          <pre><code>function Welcome(props) {
+  return &lt;Text&gt;Xin chào {props.name}&lt;/Text&gt;;
+}</code></pre>
+          <h3>Hooks: state &amp; effect</h3>
+          <ul>
+            <li><code>useState</code>: lưu trạng thái trong component (render lại khi đổi).</li>
+            <li><code>useEffect</code>: chạy khi mount/update — gọi API, đăng ký listener, cleanup.</li>
+          </ul>
+          <pre><code>import { useEffect, useState } from "react";
+import { Text, View } from "react-native";
+
+export default function Clock() {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() =&gt; {
+    const id = setInterval(() =&gt; setSeconds((s) =&gt; s + 1), 1000);
+    return () =&gt; clearInterval(id);
+  }, []);
+
+  return (
+    &lt;View&gt;
+      &lt;Text&gt;Đã chạy: {seconds}s&lt;/Text&gt;
+    &lt;/View&gt;
+  );
+}</code></pre>
+        </section>
+
+        <section id="props-advanced">
+          <h2>Truyền props trong React Native (mở rộng)</h2>
+          <p>
+            Ngoài việc truyền từng <strong>tên cố định</strong> (<code>name</code>, <code>title</code>, <code>tintColor</code>…),
+            bạn sẽ gặp thêm các mẫu sau khi ráp UI thật. Tất cả đều là “đưa dữ liệu hoặc hành vi từ cha xuống con” qua object <code>props</code>.
+          </p>
+
+          <h3>1. Giải nén và giá trị mặc định</h3>
+          <p>Viết gọn hơn <code>props.xyz</code>; khi ghép vào JSX, các giá trị mặc định trong destructure giúp tránh <code>undefined</code> lộ liễu khi cha không truyền đủ.</p>
+          <pre><code>function PriceTag({ symbol = "VN30", pct = 0 }) {
+  return (
+    &lt;Text&gt;
+      {symbol} {pct &gt;= 0 ? "+" : ""}
+      {pct}%
+    &lt;/Text&gt;
+  );
+}</code></pre>
+
+          <h3>2. <code>children</code> — nội dung nằm giữa thẻ</h3>
+          <p>Mọi thứ bọc trong <code>&lt;Card&gt;...&lt;/Card&gt;</code> được truyền xuống qua prop đặc biệt <code>children</code> (hay destructure trong hàm).</p>
+          <pre><code>import { StyleSheet, Text, View } from "react-native";
+
+function ScreenCard({ title, children }) {
+  return (
+    &lt;View style={styles.card}&gt;
+      &lt;Text style={styles.title}&gt;{title}&lt;/Text&gt;
+      {children}
+    &lt;/View&gt;
+  );
+}
+
+/* Dùng: */
+&lt;ScreenCard title="Tổng quan"&gt;
+  &lt;Text&gt;Nội dung bên trong chính là children&lt;/Text&gt;
+&lt;/ScreenCard&gt;
+
+const styles = StyleSheet.create({
+  card: { padding: 16, borderRadius: 14, gap: 8 },
+  title: { fontSize: 18, fontWeight: "700" },
+});</code></pre>
+
+          <h3>3. Spread <code>...props</code> / <code>...rest</code> — chuyển tiếp xuống native component</h3>
+          <p>
+            Wrapper nút chỉ ép thêm kiểu, còn mọi sự kiện / style của thư viện vẫn truyền xuyên suốt bằng spread.
+          </p>
+          <pre><code>import { Pressable, StyleSheet, Text } from "react-native";
+
+const styles = StyleSheet.create({
+  btn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 14, backgroundColor: "#22d3ee" },
+  dim: { opacity: 0.5 },
+  txt: { fontWeight: "700", textAlign: "center" },
+});
+
+/** Chuyển onPress, style, accessibility... xuống Pressable qua {...rest} */
+function PrimaryButton({ label, ...rest }) {
+  return (
+    &lt;Pressable style={[styles.btn, rest.disabled &amp;&amp; styles.dim]} {...rest}&gt;
+      &lt;Text style={styles.txt}&gt;{label}&lt;/Text&gt;
+    &lt;/Pressable&gt;
+  );
+}
+
+/* Cha — truyền như Pressable nhưng thêm riêng prop label */
+// &lt;PrimaryButton label="Lưu" onPress={() =&gt; {}} accessibilityRole="button" /&gt;</code></pre>
+
+          <h3>4. Props là hàm (callback từ con lên cha)</h3>
+          <p>Cha giữ state; con nhận hàm để báo lại — <code>onChangeText</code>, <code>onPress</code> là các prop kiểu này.</p>
+          <pre><code>import { Text, TextInput, View } from "react-native";
+
+function LabeledInput({ label, value, onChangeText, placeholder }) {
+  return (
+    &lt;View&gt;
+      &lt;Text style={{ marginBottom: 4 }}&gt;{label}&lt;/Text&gt;
+      &lt;TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder ?? ""}
+        style={{ borderWidth: 1, borderRadius: 8, padding: 10 }}
+      /&gt;
+    &lt;/View&gt;
+  );
+}
+
+/* Cha: const [bio, setBio] = useState(""); ... */
+&lt;LabeledInput
+  label="Ghi chú"
+  value={bio}
+  onChangeText={setBio}
+  placeholder="Nhập text..."
+/&gt;</code></pre>
+
+          <h3>5. <code>FlatList</code>: prop <code>renderItem</code> (nhận một hàm)</h3>
+          <p>Hàm này cũng là “prop” — bạn báo cho list cách render từng phần tử; các prop phụ thường gặp: <code>keyExtractor</code>, <code>ItemSeparatorComponent</code>, <code>ListHeaderComponent</code>.</p>
+          <pre><code>import { FlatList, Pressable, Text, View } from "react-native";
+
+function WalletPicker({ wallets, selectedId, onSelect }) {
+  return (
+    &lt;FlatList
+      data={wallets}
+      keyExtractor={(w) =&gt; String(w.id)}
+      renderItem={({ item }) =&gt; (
+        &lt;Pressable onPress={() =&gt; onSelect(item.id)}&gt;
+          &lt;View style={{ opacity: selectedId === item.id ? 1 : 0.6 }}&gt;
+            &lt;Text&gt;{item.name}&lt;/Text&gt;
+          &lt;/View&gt;
+        &lt;/Pressable&gt;
+      )}
+    /&gt;
+  );
+}</code></pre>
+
+          <h3>6. <code>key</code> trong danh sách (quan trọng, không nhầm với props thường)</h3>
+          <p>
+            Khi <code>map</code> tay: mỗi phần tử cần <code>&lt;View key={id}&gt;</code> ổn định. <code>FlatList</code> dùng <code>keyExtractor</code> thay vai trò đó.
+            Không chọn <code>key</code> theo chỉ mục mảng nếu có thể tránh (<code>i</code> khi reorder sẽ lộ bug).
+          </p>
+
+          <h3>Khi không muốn “rơi tiếng” props qua mọi tầng</h3>
+          <p>
+            Nếu cùng một giá trị (theme, user đăng nhập, ngôn ngữ…) phải bơm qua 5–6 cấp component, có thể dùng
+            <strong>Context API</strong> của React để các lá sâu đọc trực tiếp, thay cho prop drilling.
+            Không lạm dụng: luồng dữ liệu rõ ràng vẫn ưu tiên props và state gần nơi dùng.
+          </p>
+        </section>
+
+        <section id="visual-hooks">
+          <h2>Hooks — minh họa trực quan (chạy trong trình duyệt)</h2>
+          <p>
+            React Native dùng cùng bộ <strong>hook</strong> của React. Các khối dưới đây là JavaScript thuần trên trang web
+            nhưng <strong>mô phỏng đúng hành vi</strong>: khi “state” đổi thì phần hiển thị cập nhật;
+            khi tắt effect thì có bước <em>cleanup</em> (giống return trong <code>useEffect</code>).
+          </p>
+
+          <div class="play-card">
+            <h4>useState — đếm và re-render</h4>
+            <p class="intro">
+              Trong RN: <code>const [n, setN] = useState(0)</code>. Mỗi lần gọi <code>setN</code>, component chạy lại (re-render)
+              và UI đọc giá trị <code>n</code> mới — giống nút dưới đây cập nhật số và bộ đếm “lần vẽ lại”.
+            </p>
+            <p style="margin:0.5rem 0"><span class="stat-tag" id="hookCounterVal">Đếm: 0</span></p>
+            <div class="pill-group">
+              <button type="button" class="pill-btn" id="hookCounterMinus">−1</button>
+              <button type="button" class="pill-btn" id="hookCounterPlus">+1</button>
+              <button type="button" class="pill-btn" id="hookCounterReset">Reset</button>
+            </div>
+            <p style="margin:0.6rem 0 0"><span class="stat-tag dim" id="hookRenderCount">Số lần cập nhật (≈ render): 0</span></p>
+          </div>
+
+          <div class="play-card">
+            <h4>useState — bật/tắt một phần UI</h4>
+            <p class="intro">
+              Rất phổ biến: bool state cho menu, bottom sheet, “xem thêm”. Thử bật/tắt khối dưới — trên RN bạn vẫn dùng
+              <code>useState(true/false)</code> rồi điều kiện trong JSX.
+            </p>
+            <label class="pill-group" style="align-items:center;margin:0">
+              <input type="checkbox" id="hookToggleVis" checked style="width:18px;height:18px;accent-color:var(--accent)" />
+              <span style="font-size:0.9rem;color:#d4d4d8">Hiện panel gợi ý</span>
+            </label>
+            <div id="hookTogglePanel" style="margin-top:10px;padding:12px;border-radius:12px;background:rgba(34,211,238,0.12);border:1px solid rgba(34,211,238,0.35);font-size:0.88rem;color:#e4e4e7">
+              Khi tắt checkbox, panel này ẩn — tương đương <code>{visible &amp;&amp; &lt;View&gt;...&lt;/View&gt;}</code>.
+            </div>
+          </div>
+
+          <div class="play-card">
+            <h4>useState — “controlled input” (TextInput)</h4>
+            <p class="intro">
+              Ô nhập dưới đây điều khiển dòng chữ bên dưới: state = nội dung ô. Trên RN bạn dùng
+              <code>&lt;TextInput value={name} onChangeText={setName} /&gt;</code>.
+            </p>
+            <input type="text" id="hookNameInput" placeholder="Nhập tên…"
+              style="width:100%;max-width:320px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#18181b;color:#fafafa;font-size:0.92rem;font-family:inherit" />
+            <p style="margin:10px 0 0;font-size:0.95rem;color:#e4e4e7">Xin chào, <strong id="hookNameOut" style="color:var(--accent)">...</strong></p>
+          </div>
+
+          <div class="play-card">
+            <h4>useEffect — side effect có cleanup (đồng hồ)</h4>
+            <p class="intro">
+              Bật công tắc = effect chạy: đăng ký <code>setInterval</code>. Tắt = chạy <strong>cleanup</strong>
+              (<code>clearInterval</code>) và đồng hồ dừng hẳn. Mảng phụ thuộc <code>[]</code> trong ví dụ đồng hồ nghĩa là chỉ khởi tạo khi vào màn;
+              trong app thực có thể thêm <code>[userId]</code> để sync lại khi đổi user.
+            </p>
+            <label class="pill-group" style="align-items:center;margin:0 0 0.5rem">
+              <input type="checkbox" id="hookFxOn" checked style="width:18px;height:18px;accent-color:var(--accent)" />
+              <span style="font-size:0.9rem;color:#d4d4d8">Bật effect (tick mỗi giây)</span>
+            </label>
+            <p style="margin:0"><span class="stat-tag" id="hookFxTick">Tick: 0</span></p>
+            <div class="hook-log" id="hookFxLog"></div>
+          </div>
+
+          <pre><code>// Tóm ý RN — các demo trên tương ứng
+const [count, setCount] = useState(0);
+const [on, setOn] = useState(true);
+useEffect(() =&gt; {
+  if (!on) return;
+  const id = setInterval(() =&gt; setTick((t) =&gt; t + 1), 1000);
+  return () =&gt; clearInterval(id);
+}, [on]);</code></pre>
+        </section>
+
+        <section id="rn-core">
+          <h2>React Native: View, Text, và bố cục</h2>
+          <ul>
+            <li><strong>View</strong>: khối bố cục (như một <code>div</code> trừu tượng).</li>
+            <li><strong>Text</strong>: mọi chữ phải nằm trong <code>Text</code> (không gõ chữ “rơi tự do” vào View).</li>
+            <li><strong>Pressable</strong>/<strong>TouchableOpacity</strong>: vùng bấm (nút).</li>
+            <li><strong>ScrollView</strong>: cuộn nội dung ngắn.</li>
+            <li><strong>FlatList</strong>/<strong>SectionList</strong>: danh sách dài (virtualization).</li>
+            <li><strong>Image</strong>: hiển thị ảnh (đường dẫn từ mạng cần kích thước).</li>
+          </ul>
+          <pre><code>import { View, Text, StyleSheet } from "react-native";
+
+export function Card({ title }) {
+  return (
+    &lt;View style={styles.card}&gt;
+      &lt;Text style={styles.title}&gt;{title}&lt;/Text&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "#18181b",
+    borderWidth: 1,
+    borderColor: "#3f3f46",
+  },
+  title: { color: "#fafafa", fontSize: 16, fontWeight: "700" },
+});</code></pre>
+          <div class="callout">
+            Mặc định trong RN: <strong>flexDirection là <code>'column'</code></strong>, ngược với CSS web là <code>row</code>.
+            Hãy coi mọi màn là “Flexbox chiến” — chỉ có một số thuộc tính so với web (ví dụ không có shorthand <code>border</code> đầy đủ một dòng trong mọi phiên bản SDK).
+          </div>
+        </section>
+
+        <section id="style-rn">
+          <h2>Style trong React Native và so với CSS</h2>
+          <ul>
+            <li><strong>StyleSheet.create</strong>: gom kiểu, tối ưu, tránh tạo object mới vô cớ mỗi render.</li>
+            <li><strong>Không có cascade</strong> như CSS chọn selector — style áp vào đúng node qua props <code>style</code>.</li>
+            <li><strong>Đơn vị</strong>: số không gắn <code>px</code>; coi là “density-independent pixels” giống ý của dp.</li>
+            <li><strong>Đổ bóng</strong>: iOS là <code>shadow*</code>; Android là <code>elevation</code>.</li>
+            <li>Khi học RN, hãy tập nghĩ bằng <strong>hệ trục trục dọc + flex</strong> trước khi chồng absolute.</li>
+          </ul>
+          <pre><code>// Tab bar trong RN — ý chính: row, space-around, chiều cao + SafeAreaInsets
+const styles = StyleSheet.create({
+  tabBar: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingBottom: Platform.select({ ios: 12, android: 8 }),
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#27272a",
+    backgroundColor: "rgba(16,16,18,0.9)",
+  },
+});</code></pre>
+        </section>
+
+        <section id="visual-style-guide">
+          <h2>Style phổ biến trong thiết kế hiện đại — làm gì, khi nào dùng</h2>
+          <p>
+            Bảng dưới gắn thuộc tính với ngữ cảnh thực tế app (dashboard, danh sách, form). Ấn các nút để thấy
+            <strong>khác biệt trực quan</strong>. Trên React Native dùng tên CamelCase trong object style
+            (ví dụ <code>justifyContent: "space-between"</code>).
+          </p>
+
+          <div class="play-card">
+            <h4><code>justifyContent</code> (trục chính) — chia khoảng trống của hàng / cột</h4>
+            <p class="intro">
+              <strong>Phổ biến:</strong> <code>space-between</code> (hai đầu thanh toolbar),
+              <code>center</code> ( căn giữa nhóm nút ), <code>flex-start</code> / <code>flex-end</code>.
+              Thanh tab thường là <code>row</code> + <code>space-around</code> hoặc chia đều ô.
+            </p>
+            <div class="pill-group" id="justifyBtns"></div>
+            <div id="justifyDemo" class="flex-demo-box flex-jc-fs">
+              <div class="flex-mini"></div>
+              <div class="flex-mini"></div>
+              <div class="flex-mini"></div>
+            </div>
+            <p id="justifyCaption" class="flex-demo-caption">justify-content: flex-start</p>
+          </div>
+
+          <div class="play-card">
+            <h4><code>alignItems</code> (trục phụ) — căn các con trên chiều vuông góc trục chính</h4>
+            <p class="intro">
+              Cột có chiều cao cố định + vài nút/thanh: chọn để các phần tử ôm trái, giữa, phải, hoặc kéo dài full bề ngang (<code>stretch</code> — mặc định theo chiều ngang của cột).
+            </p>
+            <div class="pill-group" id="alignBtns"></div>
+            <div id="alignDemo" class="flex-col-demo align-stretch">
+              <div class="align-pill">A</div>
+              <div class="align-pill">B</div>
+              <div class="align-pill">C</div>
+            </div>
+            <p id="alignCaption" class="flex-demo-caption">flexDirection: column · alignItems: "stretch"</p>
+          </div>
+
+          <div class="play-card">
+            <h4><code>gap</code> — khoảng cách đều giữa các con</h4>
+            <p class="intro">
+              Thiết kế hiện đại hay dùng thay margin lẻ tẻ giữa chip, filter, ô trong form. RN hỗ trợ <code>gap</code> từ phiên bản mới; codebase cũ thường thêm margin từng phần tử.
+            </p>
+            <div class="pill-group">
+              <button type="button" class="pill-btn gap-set is-on" data-gap="8">gap: 8</button>
+              <button type="button" class="pill-btn gap-set" data-gap="20">gap: 20</button>
+              <button type="button" class="pill-btn gap-set" data-gap="36">gap: 36</button>
+            </div>
+            <div id="gapPlay" class="gap-row-demo">
+              <div class="gap-chip"></div>
+              <div class="gap-chip"></div>
+              <div class="gap-chip"></div>
+              <div class="gap-chip"></div>
+            </div>
+          </div>
+
+          <div class="play-card">
+            <h4><code>padding</code> vs <code>margin</code></h4>
+            <p class="intro">
+              <strong>Padding</strong>: khoảng “lót” bên trong khung (nội dung không dính viền) — ô input, card, nút.
+              <strong>Margin</strong>: khoảng “đẩy” ra ngoài so với hàng xóm — tránh chồng card, chừa chỗ tay cầm.
+            </p>
+            <div class="pm-visual">
+              <div class="pm-stage">
+                <span class="pm-tag ma">Margin (đỏ)</span>
+                <span class="pm-tag pa">Padding (xanh lá)</span>
+                <div class="pm-margin-zone">
+                  <div class="pm-padding-zone">
+                    <div class="pm-content">Nội dung</div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <ul style="margin:0;padding-left:1.25rem;color:#d4d4d8;font-size:0.9rem;">
+                  <li>RN: <code>padding</code>, <code>paddingHorizontal</code>, <code>marginVertical</code> …</li>
+                  <li>Card + danh sách: thường padding trong card; margin giữa các item list.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="play-card">
+            <h4><code>borderRadius</code> — cảm giác hiện đại / friendly</h4>
+            <p class="intro">
+              <strong>Bo nhỏ (4–8)</strong>: bảng, tag dày.<br/>
+              <strong>12–16</strong>: card, nút trong app đời mới.<br/>
+              <strong>Pill (<code>999</code>/<code>50%</code> chiều cao)</strong>: chip, segmented control, FAB tròn dẹt.
+            </p>
+            <div class="radius-row">
+              <div class="radius-box r4" title="borderRadius nhỏ">4px</div>
+              <div class="radius-box r16" title="Bo card">16px</div>
+              <div class="radius-box rfull">pill</div>
+            </div>
+          </div>
+
+          <div class="play-card">
+            <h4><code>flex: 1</code> — phần tử chiếm phần còn lại của hàng/cột</h4>
+            <p class="intro">
+              Cực hay gặp: thanh có nút cố định trái + tiêu đề giữa; hoặc cột chừa footer cố định, body kéo dài.
+              Bên RN: viết <code>{ flex: 1 }</code> trên View bọc ScrollView để không bị tràn khỏi màn.
+            </p>
+            <div class="flex1-row">
+              <div class="flex1-fixed">Cố định</div>
+              <div class="flex1-grow">flex: 1 (giãn đây)</div>
+            </div>
+          </div>
+
+          <div class="play-card">
+            <h4>Lớp bán trong + <code>backdrop-filter</code> (glass) — chồng chip trên nền họa tiết</h4>
+            <p class="intro">
+              Trên web: làm được ngay như khối dưới. Trên RN: thường cần thư viện blur hoặc giả bằng nền
+              <code>rgba(..., ~0.5–0.8)</code> không blur (vẫn “đẹp đủ” trên mockup).
+            </p>
+            <div class="layer-stack">
+              <div class="layer-a"></div>
+              <div class="layer-b">Panel kính (blur nền phía sau)</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="nav">
+          <h2>Điều hướng và cấu trúc app</h2>
+          <p>
+            Kiến trúc hay gặp với RN + Expo là <strong>React Navigation</strong>:
+            điều chỉnh <em>Bottom Tabs</em> cho màn “gốc”, xếp <em>Stack</em> bên trong từng tab để vào chi tiết.
+          </p>
+          <ul>
+            <li>Tab chứa các trang không cần back stack luôn (Tổng quan, Ví …).</li>
+            <li>Stack cho luồng “vào sâu” (Chi tiết tài sản, form lệnh mua).</li>
+            <li>Modal layer cho popup / bottom sheet tuỳ nhu cầu.</li>
+          </ul>
+          <pre><code>// Pseudocode khung — thực tế bạn ghép Stack + BottomTabs từ @react-navigation/*
+// TabRoot:
+// - Tab "Home" -&gt; HomeStack (HomeScreen + Detail...)
+// - Tab "Profile" -&gt; ProfileStack
+// Drawer (menu trái) là lựa chọn thêm, không bắt buộc</code></pre>
+        </section>
+
+        <section id="expo-tooling">
+          <h2>Expo và công cụ</h2>
+          <ul>
+            <li><strong>npx create-expo-app</strong>: tạo dự án.</li>
+            <li><strong>npx expo start</strong>: mở dev server, scan QR trong app Expo Go.</li>
+            <li>Hot reload: sửa file → điện thoại/laptop cập nhật ngay.</li>
+            <li>Khi học RN, làm quen luôn với báo lỗi trong terminal + log device (Metro).</li>
+          </ul>
+        </section>
+
+        <section id="demo-one-screen">
+          <h2>Demo: một màn hình (không đăng nhập / đăng ký)</h2>
+          <p>
+            Minh họa dạng <strong>đọc dữ liệu tĩnh hoặc mock</strong> (số liệu cứng trong code) để bạn tập layout trước khi gắn API.
+            Luồng auth sẽ bọc thêm sau; ở đây tập trung vào <strong>Safe Area · điều hướng tab · cuộn · nút bấm · StyleSheet</strong>.
+            Phần điện thoại bên dưới là <em>giả lập trên web</em> (blur, safe-area dùng CSS); bên RN dùng đúng các package trong bảng liên hệ.
+            Khung dọc bám <strong>tỉ lệ màn logic iPhone 15</strong> — <strong>393 × 852 pt</strong> (CSS <code>aspect-ratio: 393 / 852</code>).
+          </p>
+
+          <div class="one-screen-demo-wrap">
+            <figure class="phone" aria-label="Demo một màn không auth">
+              <div class="phone-notch"><span></span></div>
+              <div class="demo-screen demo-screen-b">
+                <div class="safe-edge-hint" title="Trên RN: padding từ safe area (notch / status bar)">
+                  safe-area top · insets.paddingTop
+                </div>
+                <div class="demo-header-simple">
+                  <h4>Ví mô phỏng</h4>
+                  <p>Dữ liệu mẫu trong code · không màn Login</p>
+                </div>
+                <div class="demo-scroll-inner" role="region" aria-label="Vùng cuộn (ScrollView)">
+                  <div class="demo-row-line"><strong>Nạp ví</strong>+5.000.000 · mẫu</div>
+                  <div class="demo-row-line"><strong>Mua VN30</strong>-2.000.000 · mẫu</div>
+                  <div class="demo-row-line"><strong>Phí giao dịch</strong>-15.000 · mẫu</div>
+                  <div class="demo-row-line"><strong>Lãi tích luỹ</strong>+124.000 · mẫu</div>
+                  <div class="demo-row-line"><strong>…</strong> kéo để xem thêm dòng</div>
+                </div>
+                <button type="button" class="demo-fab-mini" aria-label="Thêm (Pressable)">+</button>
+                <nav class="demo-tabbar demo-tabbar-3" aria-label="Bottom tabs (React Navigation)">
+                  <button type="button" class="demo-tab"><span class="icon-pill">⌂</span>Tổng quan</button>
+                  <button type="button" class="demo-tab is-active"><span class="icon-pill">≡</span>Ví</button>
+                  <button type="button" class="demo-tab"><span class="icon-pill">◎</span>Đầu tư</button>
+                </nav>
+              </div>
+            </figure>
+
+            <div class="screen-legend-card">
+              <h4>Thư viện / API tương ứng từng vùng UI</h4>
+              <p>Đây là bộ thường dùng cho Expo + React Navigation hiện đại. Cài thêm theo tài liệu từng package.</p>
+
+              <div class="legend-row">
+                <span class="lib-pill">react-native-safe-area-context</span>
+                <span><strong>Safe Area</strong> — bọc root bằng <code>SafeAreaProvider</code>; màn bọc <code>SafeAreaView</code> hoặc <code>useSafeAreaInsets()</code> để padding trên (notch) và dưới (home indicator) giống vạch xanh trong mock.</span>
+              </div>
+              <div class="legend-row">
+                <span class="lib-pill">@react-navigation/native<br/>bottom-tabs</span>
+                <span><strong>Thanh tab đáy</strong> — <code>createBottomTabNavigator</code>; màn ví dụ là tab <em>Ví</em> đang active.</span>
+              </div>
+              <div class="legend-row">
+                <span class="lib-pill">react-native<br/>ScrollView</span>
+                <span><strong>Danh sách giao dịch</strong> — nội dung ngắn dùng <code>ScrollView</code>; danh dài từ API nên đổi <code>FlatList</code>.</span>
+              </div>
+              <div class="legend-row">
+                <span class="lib-pill">react-native<br/>Pressable</span>
+                <span><strong>Nút FAB “+”</strong> — <code>Pressable</code> hoặc <code>TouchableOpacity</code>; gắn <code>onPress</code> (mở modal / màn thêm giao dịch mock).</span>
+              </div>
+              <div class="legend-row">
+                <span class="lib-pill">react-native<br/>View · Text · StyleSheet</span>
+                <span><strong>Header + từng dòng</strong> — <code>View</code> bố cục, <code>Text</code> hiển thị chữ; style gom <code>StyleSheet.create</code>.</span>
+              </div>
+              <div class="legend-row">
+                <span class="lib-pill">expo-status-bar</span>
+                <span><strong>Thanh trạng thái</strong> — <code>StatusBar</code> / <code>expo-status-bar</code> chỉnh style sáng/tối (không vẽ trong mock nhưng luôn có trên máy thật).</span>
+              </div>
+              <div class="legend-row">
+                <span class="lib-pill">@expo/vector-icons</span>
+                <span><strong>Icon tab</strong> — <em>tuỳ chọn</em>; hay dùng Material / Ionicons thay ký tự placeholder trong mock.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout">
+            <strong>Không có Login trong demo này:</strong> bạn có thể hardcode mảng <code>transactions</code> trong file screen,
+            hoặc sau này bọc navigator: nếu không có token thì màn <code>Login</code>, còn không thì vào tab như mock.
+          </div>
+
+          <h3>Khung code gợi ý (rút gọn — đủ để hình dung cây component)</h3>
+          <pre><code>import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+// import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+
+const MOCK_TX = [
+  { id: "1", title: "Nạp ví", subtitle: "+5.000.000 · mẫu" },
+  { id: "2", title: "Mua VN30", subtitle: "-2.000.000 · mẫu" },
+];
+
+export function WalletDemoScreen() {
+  return (
+    &lt;SafeAreaView style={styles.root} edges={["top", "left", "right"]}&gt;
+      &lt;View style={styles.header}&gt;
+        &lt;Text style={styles.h1}&gt;Ví mô phỏng&lt;/Text&gt;
+        &lt;Text style={styles.sub}&gt;Dữ liệu mẫu · không Login&lt;/Text&gt;
+      &lt;/View&gt;
+      &lt;ScrollView contentContainerStyle={styles.list}&gt;
+        {MOCK_TX.map((t) =&gt; (
+          &lt;View key={t.id} style={styles.row}&gt;
+            &lt;Text style={styles.rowTitle}&gt;{t.title}&lt;/Text&gt;
+            &lt;Text style={styles.rowSub}&gt;{t.subtitle}&lt;/Text&gt;
+          &lt;/View&gt;
+        ))}
+      &lt;/ScrollView&gt;
+      &lt;Pressable style={styles.fab} onPress={() =&gt; {}}&gt;
+        &lt;Text style={styles.fabTxt}&gt;+&lt;/Text&gt;
+      &lt;/Pressable&gt;
+      {/** Tab bar do BottomTabNavigator render — không nằm trong file screen này */ }
+    &lt;/SafeAreaView&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#18181b" },
+  header: { paddingHorizontal: 16, paddingBottom: 12 },
+  h1: { fontSize: 20, fontWeight: "800", color: "#fafafa" },
+  sub: { fontSize: 13, color: "#a1a1aa", marginTop: 4 },
+  list: { paddingVertical: 12, paddingBottom: 96 },
+  row: { marginHorizontal: 12, marginBottom: 8, padding: 13, borderRadius: 12 },
+  rowTitle: { fontWeight: "700", color: "#fafafa" },
+  rowSub: { color: "#a1a1aa", fontSize: 13 },
+  fab: { position: "absolute", right: 16, bottom: 88, width: 48, height: 48, borderRadius: 14 },
+  fabTxt: { fontSize: 28, textAlign: "center" },
+});</code></pre>
+        </section>
+
+        <div class="divider"></div>
+
+        <section id="css-modern">
+          <h2>Mẫu UI hiện đại — CSS web (thiết kế tab bar, header, list, FAB)</h2>
+          <p>
+            RN không đọc file <code>.css</code>. Phần dưới giúp bạn học “chất” giao diện mobile —
+            sau đó bạn tái hiện bằng <code>StyleSheet</code>. Các điểm hiện đại thường thấy:
+            <strong>glass / blur tab bar và header</strong>, <strong>bo góc lớn</strong>, <strong>nền gradient nhẹ</strong>,
+            <strong>chia lưới list</strong>, <strong>FAB có shadow màu</strong>,
+            và <strong>safe-area</strong> (<code>env(safe-area-inset-*)</code> trên web; trên RN dùng Safe Area API).
+          </p>
+
+          <h3>Bản demo: header + sticky blur + danh thẻ + tab bar kiểng kính + FAB</h3>
+          <div class="demo-grid">
+            <figure class="phone" aria-label="Demo UI mobile">
+              <div class="phone-notch"><span></span></div>
+              <div class="demo-screen">
+                <header class="demo-header">
+                  <button type="button" class="demo-back" aria-hidden="true">←</button>
+                  <div class="demo-title-stack">
+                    <strong>Tổng quan ví</strong>
+                    <small>Tháng hiện tại · chỉ báo ví dụ</small>
+                  </div>
+                  <button type="button" class="demo-action" aria-hidden="true">⋯</button>
+                </header>
+                <div class="demo-body">
+                  <div class="demo-cards">
+                    <div class="demo-card">
+                      <h4>Số dư gộp</h4>
+                      <p>Lướt phẳng, card có viền mờ + highlight góc</p>
+                    </div>
+                    <div class="demo-card">
+                      <h4>Chi tiêu</h4>
+                      <p>Tiểu section — trên RN dùng FlatList để tối ưu</p>
+                    </div>
+                  </div>
+                  <button type="button" class="demo-fab fab-wrap" aria-label="Thêm">+</button>
+                </div>
+                <nav class="demo-tabbar" aria-label="Bottom tab điều hướng">
+                  <button type="button" class="demo-tab is-active"><span class="icon-pill">◇</span>Trang chủ</button>
+                  <button type="button" class="demo-tab"><span class="icon-pill">≡</span>Ví</button>
+                  <button type="button" class="demo-tab"><span class="icon-pill">◎</span>Đầu tư</button>
+                  <button type="button" class="demo-tab"><span class="icon-pill">✎</span>Chi tiêu</button>
+                </nav>
+              </div>
+            </figure>
+
+            <div>
+              <h3 style="margin-top: 0;">Mẫu hàng trong danh sách (list row)</h3>
+              <p>Hàng avatar + hai dòng tiêu đề/phụ + meta bên phải — cực phổ biến trong mọi app.</p>
+              <div class="list-demo">
+                <div class="list-row">
+                  <div class="list-avatar">V</div>
+                  <div>
+                    <p class="list-title">Ví chi tiêu</p>
+                    <p class="list-sub">Cập nhật 2 giờ trước</p>
+                  </div>
+                  <div class="list-meta">⋯</div>
+                </div>
+                <div class="list-row">
+                  <div class="list-avatar" style="background: linear-gradient(145deg, #22d3ee, #6366f1);">Đ</div>
+                  <div>
+                    <p class="list-title">Danh mục đầu tư</p>
+                    <p class="list-sub">+2.4% · giả lập</p>
+                  </div>
+                  <div class="list-meta">&gt;</div>
+                </div>
+              </div>
+
+              <h3>Nút Primary (RN: Pressable)</h3>
+              <p>
+                <button type="button"
+                  style="margin-top: 0.35rem;padding:12px 20px;border-radius:14px;border:none;font-weight:700;
+                  cursor:pointer;color:#020617;background:linear-gradient(145deg,#22d3ee,#0891b2);
+                  box-shadow:0 14px 30px rgba(34,211,238,0.45);font-family:inherit;">
+                  Tiếp tục
+                </button>
+              </p>
+            </div>
+          </div>
+
+          <h3>Extract pattern — Tab bar blur (CSS tham chiếu)</h3>
+          <pre><code>/* Thuộc tính lõi của thanh tab đáy trong demo */
+.demo-tabbar {
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  background: rgba(22, 22, 26, 0.72);
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(63, 63, 70, 0.45);
+}</code></pre>
+
+          <h3>Extract pattern — Header dính (“sticky”) và lớp mờ</h3>
+          <pre><code>.demo-header {
+  position: sticky;
+  top: 0;
+  backdrop-filter: saturate(140%) blur(16px);
+  border-bottom: 1px solid rgba(63, 63, 70, 0.5);
+  padding-top: max(10px, env(safe-area-inset-top));
+}</code></pre>
+        </section>
+
+        <section id="mastery-ui">
+          <h2>Thành thạo UI — lộ trình nâng cao sau Flexbox</h2>
+          <p>
+            Khi đã đi được các mục <a href="#style-rn">Style</a>, <a href="#visual-style-guide">flex demo</a> và
+            <a href="#nav">điều hướng</a>, bạn chỉnh theo checklist dưới để đưa UI lên “cấp sản phẩm”.
+            Đều là bài trong <strong>repo Expo của bạn</strong> — trang web không thay chỗ được việc bấm thật trên máy.
+          </p>
+
+          <h3>Lists &amp; hiệu năng</h3>
+          <ul>
+            <li>Dùng <code>FlatList</code> (hoặc <code>FlashList</code> khi danh dài, cần tối ưu).</li>
+            <li><code>keyExtractor</code> ổn định; tránh anonymous function nặng trong <code>renderItem</code> nếu list rất lớn (memo / <code>React.memo</code> row).</li>
+            <li><code>refreshControl</code> + Pull-to-refresh; <code>onEndReached</code> pagination.</li>
+            <li>Ba trạng thái giao diện: skeleton / shimmer hoặc <code>ActivityIndicator</code>; empty có minh họa; error có nút retry.</li>
+          </ul>
+
+          <h3>Hình ảnh &amp; tài nguyên</h3>
+          <ul>
+            <li><code>expo-image</code> (cache, placeholder) hoặc <code>Image</code> chuẩn — chỉnh <code style="white-space:nowrap">resizeMode</code>.</li>
+            <li>Nguồn local: <code>require('./x.png')</code>; remote: kích thước và HTTPS.</li>
+          </ul>
+
+          <h3>Keyboard &amp; form</h3>
+          <ul>
+            <li><code>KeyboardAvoidingView</code> + <code>behavior</code> theo platform; hoặc <code>@gorhom/bottom-sheet</code> cho form đáy màn.</li>
+            <li>Thu gọn ô nhập: <code>returnKeyType</code>, <code>onSubmitEditing</code>.</li>
+            <li>Xác thực form: học một pattern (controlled input + báo lỗi inline) hoặc <code>react-hook-form</code>.</li>
+          </ul>
+
+          <h3>Modal, overlay, gesture</h3>
+          <ul>
+            <li><code>Modal</code> built-in hoặc thư viện sheet/popover có animation mượt.</li>
+            <li>Vuốt: <code>react-native-gesture-handler</code> + <code>reanimated</code> (stack Navigation thường đã phụ thuộc).</li>
+          </ul>
+
+          <h3>An toàn vùng màn &amp; theme</h3>
+          <ul>
+            <li><code>react-native-safe-area-context</code>: <code>SafeAreaView</code> hoặc <code>useSafeAreaInsets()</code> (tab bar đáy, notch).</li>
+            <li>Dark/light: CSS variables không áp được trực tiếp RN — dùng object theme + Context hoặc thư viện (Tamagui / NativeWind nếu bạn đi Tailwind).</li>
+          </ul>
+
+          <h3>Động &amp; cảm giác “premium”</h3>
+          <ul>
+            <li><code>Animated</code> API hoặc Reanimated — bắt đầu từ opacity / translate nhỏ (nút nhấn, chuyển tab).</li>
+            <li>Micro-interaction nhẹ tốt hơn hoạt họa dài không cần thiết.</li>
+          </ul>
+
+          <h3>Gợi ý một “capstone UI” trong 2–3 ngày</h3>
+          <p>Xây cùng lúc: bottom tabs + một stack + màn có <code>FlatList</code>, pull refresh, ô tìm kiếm điều khiển danh sách bằng state, và màn chi tiết nhận <code>route.params</code>.</p>
+        </section>
+
+        <section id="data-and-api">
+          <h2>Dữ liệu &amp; gọi API — từ fetch đến token</h2>
+          <p>
+            Backend REST thường trả JSON. Trên RN bạn không có CORS như browser khi chạy native —
+            vấn đề hay gặp là <strong>URL sai</strong>, <strong>HTTPS</strong>, <strong>timeout</strong>, và <strong>401 / hết phiên</strong>.
+          </p>
+
+          <h3>Luồng chuẩn trong một màn hình</h3>
+          <ol style="margin: 0 0 1rem; padding-left: 1.35rem; color: #cbd5e1;">
+            <li>State tối thiểu: <code>data</code>, <code>loading</code>, <code>error</code> (có thể gộp vào reducer sau).</li>
+            <li><code>useEffect</code>: khi mount (hoặc khi deps đổi) gọi hàm <code>load()</code>.</li>
+            <li>Kết xử: render 3 nhánh — loading / lỗi / có dữ liệu (kể cả mảng rỗng).</li>
+          </ol>
+
+          <h3>Mẫu <code>fetch</code> + JWT (rút gọn)</h3>
+          <pre><code>import { useEffect, useState } from "react";
+
+const BASE = "https://your-api.example.com";
+
+async function apiGet(path, token) {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const text = await res.text();
+  const body = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error(body?.message ?? `HTTP ${res.status}`);
+  return body;
+}
+
+/** Custom hook ví dụ: load danh ví khi có token */
+function useWallets(token) {
+  const [state, setState] = useState({ loading: true, error: "", rows: [] });
+
+  useEffect(() =&gt; {
+    let cancelled = false;
+    (async () =&gt; {
+      try {
+        setState((s) =&gt; ({ ...s, loading: true, error: "" }));
+        const rows = await apiGet("/api/wallets", token);
+        if (!cancelled) setState({ loading: false, error: "", rows });
+      } catch (e) {
+        if (!cancelled) setState((s) =&gt; ({ ...s, loading: false, error: String(e.message) }));
+      }
+    })();
+    return () =&gt; { cancelled = true; }; // tránh setState sau unmount
+  }, [token]);
+
+  return state;
+}</code></pre>
+
+          <h3>Axios — cùng mục này, ngay sau <code>fetch</code></h3>
+          <p>
+            <strong>Axios</strong> không nằm mục riêng trên roadmap: nó thay thế / song song với <code>fetch</code> trong bước
+            <a href="#roadmap">Hero — gọi API</a>. Cài: <code>npx expo install axios</code> (hoặc <code>npm i axios</code>).
+            Khác <code>fetch</code>: tự parse JSON, ném lỗi theo status (tuỳ cấu hình), <code>baseURL</code>, timeout, và đặc biệt
+            <strong>interceptor</strong> (gắn token mọi request, xử lý 401 một chỗ).
+          </p>
+          <pre><code>import axios from "axios";
+
+const api = axios.create({
+  baseURL: "https://your-api.example.com",
+  timeout: 15_000,
+  headers: { Accept: "application/json" },
+});
+
+api.interceptors.request.use((config) =&gt; {
+  const token = globalThis.__accessToken; // thực tế: đọc từ context / memory sau khi load từ AsyncStorage
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+api.interceptors.response.use(
+  (res) =&gt; res,
+  (err) =&gt; {
+    if (err.response?.status === 401) {
+      /* logout hoặc refresh token */
+    }
+    return Promise.reject(err);
+  }
+);
+
+export async function getWallets() {
+  const { data } = await api.get("/api/wallets");
+  return data;
+}
+
+export async function postTransaction(body) {
+  const { data } = await api.post("/api/transactions", body);
+  return data;
+}</code></pre>
+          <p style="font-size:0.92rem;color:#cbd5e1;max-width:72ch">
+            Học thứ tự gợi ý: nắm <code>fetch</code> + custom hook trước → chuyển sang axios khi muốn gom cấu hình và interceptor;
+            <a href="#data-and-api">TanStack Query</a> phía dưới có thể bọc <em>bất kỳ</em> hàm async nào (fetch hoặc axios).
+          </p>
+
+          <h3>Lưu token &amp; gọi lại sau login</h3>
+          <ul>
+            <li><code>@react-native-async-storage/async-storage</code> (hoặc secure store tuỳ yêu cầu bảo mật).</li>
+            <li>Sau login: <code>setItem('token', accessToken)</code>; khi khởi động app đọc token rồi quyết định vào Login hay Home.</li>
+            <li>401 toàn cục: interceptor (nếu dùng axios) hoặc bọc <code>apiGet</code> để logout / refresh token một lần.</li>
+          </ul>
+
+          <h3>POST body &amp; header</h3>
+          <pre><code>const res = await fetch(`${BASE}/api/transactions`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  },
+  body: JSON.stringify({ walletId: 1, amount: 100 }),
+});</code></pre>
+
+          <h3>Lên một tầng: TanStack Query (React Query)</h3>
+          <p>
+            Khi nhiều màn đọc chung một resource, caching, refetch định kỳ, và invalidation sau POST sẽ gọn hơn tự quản tay.
+            Pipeline: học đủ <code>fetch</code> + state trước, rồi thêm <code>@tanstack/react-query</code>.
+          </p>
+
+          <h3>Gợi ý kiểm thử tay</h3>
+          <ul>
+            <li>Tắt Wi‑Fi: thấy thông báo lỗi + nút thử lại.</li>
+            <li>Token hết hạn: app đưa về đăng nhập hoặc refresh.</li>
+            <li>JSON lỗi định dạng: <code>try/catch</code> quanh <code>JSON.parse</code>.</li>
+          </ul>
+
+          <div class="callout">
+            Dự án SmartInvesting API của bạn dùng ASP.NET JWT — chỉ cần gửi <code>Authorization: Bearer …</code> đúng như các controller đã bọc <code>[Authorize]</code>; trên emulator Android, URL máy chủ có thể cần <code>10.0.2.2</code> thay cho <code>localhost</code>.
+          </div>
+        </section>
+
+        <section id="map">
+          <h2>Ánh xạ nhanh: CSS trong trang ↔ React Native</h2>
+          <table style="width:100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.9rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                <th style="padding: 10px 8px;">Ý trong CSS web</th>
+                <th style="padding: 10px 8px;">RN tương đương</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid rgba(63,63,70,0.5);"><td style="padding:10px 8px;"><code>display:flex; flex-direction:column</code></td><td style="padding:10px 8px;">Mặc định của <code>View</code>; hoặc <code>{ flexDirection: "column" }</code></td></tr>
+              <tr style="border-bottom: 1px solid rgba(63,63,70,0.5);"><td style="padding:10px 8px;"><code>gap</code> (flex gap)</td><td style="padding:10px 8px;"><code>gap</code> (RN mới có; cũ dùng margin/padding)</td></tr>
+              <tr style="border-bottom: 1px solid rgba(63,63,70,0.5);"><td style="padding:10px 8px;"><code>position:sticky</code> header</td><td style="padding:10px 8px;">Thường dùng <code>Animated</code> / thư viện header của navigation</td></tr>
+              <tr style="border-bottom: 1px solid rgba(63,63,70,0.5);"><td style="padding:10px 8px;"><code>backdrop-filter</code></td><td style="padding:10px 8px;"><code>@react-native-community/blur</code> hoặc giả blur bằng nền bán trong + gradient</td></tr>
+              <tr style="border-bottom: 1px solid rgba(63,63,70,0.5);"><td style="padding:10px 8px;"><code>env(safe-area-inset-bottom)</code></td><td style="padding:10px 8px;"><code>useSafeAreaInsets()</code> từ react-native-safe-area-context</td></tr>
+              <tr><td style="padding:10px 8px;">Box shadow chi tiết web</td><td style="padding:10px 8px;"><code>shadow*</code> (iOS) + <code>elevation</code> (Android)</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </article>
+
+      <footer>
+        File <span class="mono">docs/learn-react-native.html</span> — tài liệu học có <a href="#roadmap">roadmap Zero → Hero</a>,
+        không ảnh hưởng build API/UI của repo.
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      document.querySelectorAll("nav.demo-tabbar").forEach(function (bar) {
+        bar.querySelectorAll(".demo-tab").forEach(function (tab) {
+          tab.addEventListener("click", function () {
+            bar.querySelectorAll(".demo-tab").forEach(function (t) {
+              t.classList.remove("is-active");
+            });
+            tab.classList.add("is-active");
+          });
+        });
+      });
+
+      var justifyPresets = [
+        { cls: "flex-jc-fs", label: "flex-start", css: "justify-content: flex-start", rn: 'justifyContent: "flex-start"' },
+        { cls: "flex-jc-c", label: "center", css: "justify-content: center", rn: 'justifyContent: "center"' },
+        { cls: "flex-jc-sb", label: "space-between", css: "justify-content: space-between", rn: 'justifyContent: "space-between"' },
+        { cls: "flex-jc-sa", label: "space-around", css: "justify-content: space-around", rn: 'justifyContent: "space-around"' },
+        { cls: "flex-jc-se", label: "space-evenly", css: "justify-content: space-evenly", rn: 'justifyContent: "space-evenly"' },
+        { cls: "flex-jc-fe", label: "flex-end", css: "justify-content: flex-end", rn: 'justifyContent: "flex-end"' },
+      ];
+
+      var justifyBox = document.getElementById("justifyDemo");
+      var justifyBtns = document.getElementById("justifyBtns");
+      var justifyCaption = document.getElementById("justifyCaption");
+
+      if (justifyBtns && justifyBox && justifyCaption) {
+        justifyPresets.forEach(function (preset, i) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "pill-btn" + (i === 0 ? " is-on" : "");
+          b.textContent = preset.label;
+          b.addEventListener("click", function () {
+            justifyPresets.forEach(function (p) {
+              justifyBox.classList.remove(p.cls);
+            });
+            justifyBox.classList.add(preset.cls);
+            justifyBtns.querySelectorAll(".pill-btn").forEach(function (x) {
+              x.classList.remove("is-on");
+            });
+            b.classList.add("is-on");
+            justifyCaption.textContent =
+              "CSS: " + preset.css + " · RN row: flexDirection: \"row\", " + preset.rn;
+          });
+          justifyBtns.appendChild(b);
+        });
+      }
+
+      var alignPresets = [
+        { cls: "align-stretch", label: "stretch", cap: 'flexDirection: "column" · alignItems: "stretch"' },
+        { cls: "align-center", label: "center", cap: 'flexDirection: "column" · alignItems: "center"' },
+        { cls: "align-end", label: "flex-end", cap: 'flexDirection: "column" · alignItems: "flex-end"' },
+      ];
+      var alignDemo = document.getElementById("alignDemo");
+      var alignBtns = document.getElementById("alignBtns");
+      var alignCaption = document.getElementById("alignCaption");
+
+      if (alignBtns && alignDemo && alignCaption) {
+        alignPresets.forEach(function (preset, i) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "pill-btn" + (i === 0 ? " is-on" : "");
+          b.textContent = preset.label;
+          b.addEventListener("click", function () {
+            alignPresets.forEach(function (p) {
+              alignDemo.classList.remove(p.cls);
+            });
+            alignDemo.classList.add(preset.cls);
+            alignBtns.querySelectorAll(".pill-btn").forEach(function (x) {
+              x.classList.remove("is-on");
+            });
+            b.classList.add("is-on");
+            alignCaption.textContent = preset.cap + " · (CSS align-items)";
+          });
+          alignBtns.appendChild(b);
+        });
+      }
+
+      document.querySelectorAll(".gap-set").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var gap = btn.getAttribute("data-gap") || "8";
+          document.querySelectorAll(".gap-set").forEach(function (x) {
+            x.classList.remove("is-on");
+          });
+          btn.classList.add("is-on");
+          var row = document.getElementById("gapPlay");
+          if (row) row.style.setProperty("--gap-play", gap + "px");
+        });
+      });
+
+      var count = 0;
+      var uiUpdates = 0;
+      var cntEl = document.getElementById("hookCounterVal");
+      var updEl = document.getElementById("hookRenderCount");
+
+      function paintCounter() {
+        uiUpdates++;
+        if (cntEl) cntEl.textContent = "Đếm: " + count;
+        if (updEl) updEl.textContent = "Số lần cập nhật (≈ render): " + uiUpdates;
+      }
+
+      var minus = document.getElementById("hookCounterMinus");
+      var plus = document.getElementById("hookCounterPlus");
+      var rst = document.getElementById("hookCounterReset");
+      if (minus) minus.addEventListener("click", function () {
+        count -= 1;
+        paintCounter();
+      });
+      if (plus) plus.addEventListener("click", function () {
+        count += 1;
+        paintCounter();
+      });
+      if (rst) rst.addEventListener("click", function () {
+        count = 0;
+        paintCounter();
+      });
+      paintCounter();
+
+      var tg = document.getElementById("hookToggleVis");
+      var pn = document.getElementById("hookTogglePanel");
+      if (tg && pn) {
+        tg.addEventListener("change", function () {
+          pn.style.display = tg.checked ? "block" : "none";
+        });
+      }
+
+      var inp = document.getElementById("hookNameInput");
+      var outp = document.getElementById("hookNameOut");
+      if (inp && outp) {
+        function syncName() {
+          var v = inp.value.trim();
+          outp.textContent = v.length ? v : "…";
+        }
+        inp.addEventListener("input", syncName);
+        syncName();
+      }
+
+      var fxOn = document.getElementById("hookFxOn");
+      var fxTick = document.getElementById("hookFxTick");
+      var fxLog = document.getElementById("hookFxLog");
+      var tick = 0;
+      var intervalId = null;
+
+      function logFx(line) {
+        if (!fxLog) return;
+        fxLog.textContent += line + "\n";
+        fxLog.scrollTop = fxLog.scrollHeight;
+      }
+
+      function clearFx() {
+        if (intervalId !== null) {
+          clearInterval(intervalId);
+          intervalId = null;
+          logFx("[cleanup] clearInterval ✓");
+        }
+      }
+
+      function startFx() {
+        clearFx();
+        tick = 0;
+        if (fxTick) fxTick.textContent = "Tick: 0";
+        logFx('[effect] chạy — setInterval(..., 1000)');
+        intervalId = setInterval(function () {
+          tick += 1;
+          if (fxTick) fxTick.textContent = "Tick: " + tick;
+        }, 1000);
+      }
+
+      if (fxOn) {
+        fxOn.addEventListener("change", function () {
+          if (fxOn.checked) startFx();
+          else clearFx();
+        });
+        if (fxOn.checked) startFx();
+      }
+    })();
+  </script>
+</body>
+</html>

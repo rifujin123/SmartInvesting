@@ -1,0 +1,58 @@
+---
+description: Design tokens SmartInvesting — màu, type, spacing, radius, elevation, icon (Figma & UI)
+alwaysApply: true
+---
+
+# Design tokens (SmartInvesting — toàn app)
+
+Khi thiết kế Figma, UI code hoặc chỉnh MCP Figma: **bám sát** các giá trị dưới. Ưu tiên **Primary teal** thay cho các xanh lá đã dùng tạm (#059669) trong wireframe cũ.
+
+## Màu
+
+| Token | Giá trị | Dùng cho |
+|-------|---------|----------|
+| Primary | `#0F766E` | Nút chính, tab active, link |
+| Primary pressed | `#0D9488` | Trạng thái nhấn nút primary |
+| Surface / nền | `#F8FAFC` | Nền màn |
+| Surface card | `#FFFFFF` | Card, sheet |
+| Border / divider | `#E2E8F0` | Viền, chia vạch |
+| Text primary | `#0F172A` | Tiêu đề, nội dung chính |
+| Text secondary | `#64748B` | Phụ đề, label phụ |
+| Text muted | `#94A3B8` | Placeholder, disabled |
+| Success / lãi | `#059669` hoặc `#0F766E` | Feedback tích cực, số dương |
+| Loss / cảnh báo | `#DC2626` | Lỗ, cảnh báo |
+| Expense accent | `#B45309` hoặc `#EA580C` | **Chỉ** nhấn mạnh chi tiêu — dùng tiết kiệm |
+| Overlay modal | `rgba(15, 23, 42, 0.45)` | Nền phủ modal |
+
+## Typography
+
+Font stack: **SF Pro / Inter / system** (theo nền tảng).
+
+| Role | Size / weight |
+|------|----------------|
+| Display / số lớn (số dư, NAV) | 28–32 semibold; **tabular nums** nếu có |
+| Title màn | 20–22 semibold |
+| Section header | 17 semibold |
+| Body | 16 regular |
+| Caption | 13–14 regular |
+| Button label | 16 semibold |
+
+## Spacing (bội 4px)
+
+`4, 8, 12, 16, 20, 24, 32` — không dùng bước lẻ (vd. 10, 18) trừ khi có lý do layout nền tảng.
+
+## Radius
+
+- Card / nút: **12px**
+- Chip / pill: **20px** hoặc **full (999)**
+- Modal: **14–16px**
+
+## Elevation
+
+- Card: **viền 1px** (`#E2E8F0`) **+** shadow nhẹ **hoặc** chỉ border (flat).
+- FAB: shadow **trung bình** (nổi rõ hơn card).
+
+## Icon
+
+- Outline **24dp** mặc định.
+- Tab bar: **24–28dp**.

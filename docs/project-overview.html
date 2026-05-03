@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SmartInvesting API — Tổng quan dự án</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #2dd4bf;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 0.5rem; }
+    .sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.2rem;
+      color: var(--accent);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; color: #e2e8f0; }
+    p { margin: 0.5rem 0 1rem; color: #cbd5e1; }
+    ul { margin: 0.25rem 0 1rem 1.25rem; color: #cbd5e1; }
+    li { margin: 0.35rem 0; }
+    code, .mono {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.88em;
+      background: #0c1222;
+      padding: 0.15em 0.45em;
+      border-radius: 4px;
+      color: #a5f3fc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin: 0.75rem 0 1.25rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #162032; color: var(--accent); }
+    tr:nth-child(even) td { background: rgba(30, 41, 59, 0.5); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+    }
+    .mermaid { background: #f8fafc; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: #134e4a;
+      color: #99f6e4;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      margin-left: 0.35rem;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>SmartInvesting API <span class="badge">Tài liệu độc lập</span></h1>
+    <p class="sub">
+      Trang tổng quan use case, cơ sở dữ liệu và luồng xử lý — chỉ để đọc, không phụ thuộc host hay build của backend.
+      Chi tiết endpoint có thể đối chiếu OpenAPI/Swagger của dịch vụ khi chạy cục bộ.
+    </p>
+
+    <nav class="toc card">
+      <strong>Mục lục</strong>
+      <ul style="margin-bottom:0">
+        <li><a href="#overview">1. Tổng quan</a></li>
+        <li><a href="#usecases">2. Use case</a></li>
+        <li><a href="#database">3. Cơ sở dữ liệu</a></li>
+        <li><a href="#workflow">4. Workflow &amp; luồng API</a></li>
+      </ul>
+    </nav>
+
+    <h2 id="overview">1. Tổng quan</h2>
+    <p>
+      API phục vụ <strong>giả lập đầu tư</strong> (ví ảo, lệnh mua/bán, danh mục, giá thị trường)
+      và <strong>quản lý chi tiêu</strong> (giao dịch thu/chi, ngân sách theo tháng, tổng quan dashboard).
+      Xác thực bằng <strong>JWT</strong>; dữ liệu nghiệp vụ tách database với <strong>ASP.NET Identity</strong> (user/role).
+    </p>
+
+    <h2 id="usecases">2. Use case</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>UC</th>
+          <th>Mô tả</th>
+          <th>API chính (gợi ý)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Đăng ký / Đăng nhập</td>
+          <td>Người dùng tạo tài khoản Identity và nhận JWT để gọi các endpoint bảo vệ.</td>
+          <td><code>POST /api/auth/register</code>, <code>POST /api/auth/login</code></td>
+        </tr>
+        <tr>
+          <td>Quản lý ví</td>
+          <td>Tạo ví (số dư ban đầu), xem danh sách, vô hiệu hóa ví; có thể đánh dấu ví giả lập (<code>IsPaper</code>).</td>
+          <td><code>GET/POST/DELETE /api/wallets</code></td>
+        </tr>
+        <tr>
+          <td>Chi tiêu / Thu nhập</td>
+          <td>Ghi nhận giao dịch theo hạng mục; cập nhật số dư ví (Income tăng, Expense giảm).</td>
+          <td><code>/api/wallets/{walletId}/transactions</code> (GET, POST, PUT, DELETE)</td>
+        </tr>
+        <tr>
+          <td>Ngân sách</td>
+          <td>Đặt hạn mức theo <strong>user</strong>, danh mục, tháng/năm; xem tổng đã chi (chỉ ví của user).</td>
+          <td><code>/api/budgets</code>, <code>GET .../summary</code></td>
+        </tr>
+        <tr>
+          <td>Tài sản đầu tư</td>
+          <td>Danh mục mã (cổ phiếu, ETF, quỹ chỉ số, vàng); giá tham chiếu từ FireAnt hoặc giá lưu DB (cấu hình simulation).</td>
+          <td><code>GET /api/assets</code>, (POST thường dùng cho seed/admin)</td>
+        </tr>
+        <tr>
+          <td>Đặt lệnh mua/bán</td>
+          <td>Trừ/cộng ví, cập nhật portfolio (giá vốn TB WAC), ghi lệnh và lãi lỗ thực hiện khi bán.</td>
+          <td><code>POST /api/investment-orders</code>, <code>GET /api/investment-orders</code></td>
+        </tr>
+        <tr>
+          <td>Danh mục nắm giữ</td>
+          <td>Xem vị thế theo loại tài sản, có tùy chọn làm mới giá thị trường để tính NAV/P&amp;L.</td>
+          <td><code>GET /api/holdings/types/{typeId}?refreshMarketPrice=</code></td>
+        </tr>
+        <tr>
+          <td>Tổng quan tài chính</td>
+          <td>Tiền mặt, NAV danh mục, tổng tài sản, chi tháng, tiến độ budget.</td>
+          <td><code>GET /api/dashboard</code></td>
+        </tr>
+        <tr>
+          <td>Sự kiện thu (optional)</td>
+          <td>Lịch cổ tức / thu định kỳ gắn ví và tài sản.</td>
+          <td><code>/api/wallets/{walletId}/income-events</code></td>
+        </tr>
+        <tr>
+          <td>Hạng mục chi tiêu</td>
+          <td>Danh sách category Income/Expense cho transaction.</td>
+          <td><code>GET /api/categories</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="database">3. Cơ sở dữ liệu</h2>
+    <p>
+      Hai SQL Server (connection riêng trong <code>appsettings</code>):
+      <strong>AppDbcontext</strong> (nghiệp vụ) và <strong>AppIdentityDbcontext</strong> (AspNetUsers, roles, v.v.).
+    </p>
+
+    <h3>3.1. Các thực thể chính (AppDbcontext)</h3>
+    <table>
+      <thead>
+        <tr><th>Entity</th><th>Vai trò</th><th>Liên kết chính</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>Wallet</code></td>
+          <td>Ví theo user; số dư <code>Balance</code>.</td>
+          <td><code>UserId</code> (khớp claim JWT, không FK sang Identity bắt buộc)</td>
+        </tr>
+        <tr>
+          <td><code>Category</code></td>
+          <td>Hạng mục Income/Expense.</td>
+          <td>Transaction, Budget</td>
+        </tr>
+        <tr>
+          <td><code>Transaction</code></td>
+          <td>Giao dịch tiền mặt (note, amount, ngày).</td>
+          <td><code>WalletId</code>, <code>CategoryId</code>, optional <code>AssetId</code></td>
+        </tr>
+        <tr>
+          <td><code>Budget</code></td>
+          <td>Hạn mức chi theo tháng/năm.</td>
+          <td><code>UserId</code>, <code>CategoryId</code>; unique (<code>UserId</code>, <code>CategoryId</code>, <code>Month</code>, <code>Year</code>)</td>
+        </tr>
+        <tr>
+          <td><code>Asset</code></td>
+          <td>Mã chứng khoán/quỹ; <code>AssetType</code>, <code>CurrentPrice</code>.</td>
+          <td>Portfolio, AssetPricesHistory</td>
+        </tr>
+        <tr>
+          <td><code>AssetPricesHistory</code></td>
+          <td>Lịch sử giá (chuẩn bị cho biểu đồ; có thể chưa expose HTTP).</td>
+          <td><code>AssetId</code></td>
+        </tr>
+        <tr>
+          <td><code>Portfolio</code></td>
+          <td>Vị thế user trên một <code>Asset</code>: khối lượng, giá vốn TB.</td>
+          <td><code>UserId</code>, <code>AssetId</code></td>
+        </tr>
+        <tr>
+          <td><code>InvestmentOrder</code></td>
+          <td>Lệnh mua/bán; fee; <code>RealizedProfitLoss</code> khi bán.</td>
+          <td><code>PortfolioId</code>, <code>WalletId</code></td>
+        </tr>
+        <tr>
+          <td><code>IncomeEvent</code></td>
+          <td>Sự kiện thu (ví dụ cổ tức).</td>
+          <td><code>WalletId</code>, optional <code>AssetId</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="card">
+      <strong>Sơ đồ quan hệ (rút gọn)</strong>
+      <div class="mermaid">
+erDiagram
+  Wallet ||--o{ Transaction : has
+  Wallet ||--o{ InvestmentOrder : funds
+  Category ||--o{ Transaction : classifies
+  Category ||--o{ Budget : limits
+  Asset ||--o{ Portfolio : valued
+  Asset ||--o{ AssetPricesHistory : history
+  UserRef ||--o{ Wallet : owns
+  UserRef ||--o{ Portfolio : holds
+  UserRef ||--o{ Budget : plans
+  Portfolio ||--o{ InvestmentOrder : records
+      </div>
+    </div>
+
+    <h2 id="workflow">4. Workflow &amp; luồng API</h2>
+
+    <h3>4.1. Đăng nhập và gọi API</h3>
+    <div class="mermaid">
+sequenceDiagram
+  participant C as Client
+  participant A as AuthAPI
+  participant X as JWTControllers
+  C->>A: POST login
+  A-->>C: access_token
+  C->>X: GET or POST with Bearer header
+  X-->>C: JSON response
+    </div>
+
+    <h3>4.2. Giả lập đầu tư (mua)</h3>
+    <ol style="color:#cbd5e1;margin-left:1.25rem">
+      <li>Đảm bảo đã có <code>Asset</code> trong DB (seed hoặc POST assets).</li>
+      <li>Tạo / chọn <code>Wallet</code> đủ số dư.</li>
+      <li><code>POST /api/investment-orders</code> với <code>OrderType = Buy</code>: service trừ tiền ví, tạo/cập nhật <code>Portfolio</code>, ghi <code>InvestmentOrder</code>.</li>
+      <li>Xem vị thế: <code>GET /api/holdings/types/{typeId}</code> với <code>refreshMarketPrice=true</code> nếu cần giá mới.</li>
+    </ol>
+
+    <h3>4.3. Chi tiêu và ngân sách</h3>
+    <ol style="color:#cbd5e1;margin-left:1.25rem">
+      <li><code>POST /api/wallets/{id}/transactions</code> với category Expense/Income — số dư ví thay đổi theo loại category.</li>
+      <li>Tạo <code>Budget</code> cho (user, category, tháng, năm) — tổng đã chi trong summary/dashboard chỉ tính <strong>giao dịch Expense trên ví của user đó</strong>.</li>
+      <li><code>GET /api/dashboard</code> gom ví, NAV (theo giá hiện tại trong DB hoặc làm mới giá), chi tháng, các dòng budget.</li>
+    </ol>
+
+    <h3>4.4. Giá thị trường (cấu hình)</h3>
+    <p style="color:#cbd5e1">
+      <code>Simulation:UseLocalPrices = true</code> → dùng <code>Asset.CurrentPrice</code> cho mọi loại (giả lập thuần DB).
+      Ngược lại → FireAnt cho cổ phiếu/quỹ/ETF, fallback DB cho vàng.
+    </p>
+
+    <div class="mermaid">
+flowchart LR
+  subgraph auth ["Auth"]
+    Login["login"]
+    JWT["JWT"]
+  end
+  subgraph money ["Tien mat"]
+    W["Wallet"]
+    T["Transaction"]
+    Bdg["Budget"]
+  end
+  subgraph invest ["Dau tu"]
+    IO["InvestmentOrder"]
+    P["Portfolio"]
+    Ass["Asset"]
+  end
+  Login --> JWT
+  JWT --> W
+  W --> T
+  W --> IO
+  IO --> P
+  P --> Ass
+  T --> Bdg
+    </div>
+
+    <footer>
+      Đặt file trong thư mục <code>docs/</code> của repo. Mở bằng trình duyệt (kéo thả file vào cửa sổ, double-click, hoặc extension Live Server) —
+      không cần chạy ASP.NET và không gắn với pipeline của project.
+    </footer>
+  </div>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+  </script>
+</body>
+</html>
