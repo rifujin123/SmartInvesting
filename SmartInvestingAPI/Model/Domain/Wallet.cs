@@ -16,6 +16,10 @@ namespace SmartInvestingAPI.Model.Domain
 
         public Guid UserId { get; set; }
 
+        /// <summary>Concurrency token để ngăn race condition khi cập nhật số dư.</summary>
+        [Timestamp]
+        public byte[]? RowVersion { get; set; }
+
         /// <summary>Ví dùng cho mô phỏng / paper trading (phân biệt báo cáo, không đổi logic số dư).</summary>
         public bool IsPaper { get; set; }
 

@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SmartInvestingAPI.Model.Domain;
 using SmartInvestingAPI.Model.DTOs;
+using SmartInvestingAPI.Model.Wrappers;
 using SmartInvestingAPI.Repositories;
 using SmartInvestingAPI.Services;
 
@@ -26,55 +26,54 @@ namespace SmartInvestingAPI.Controllers
             this.marketPriceService = marketPriceService;
         }
 
-        //GET : /api/holdings/types/{id}
         [HttpGet("types/{typeId:int}")]
         public async Task<IActionResult> GetAllByType([FromRoute] int typeId, [FromQuery] bool refreshMarketPrice = false)
         {
             if (!Enum.IsDefined(typeof(AssetType), typeId))
-                return BadRequest("Danh mục không tồn tại");
+                return BadRequest(ApiResponse.Fail("Asset type does not exist"));
 
             var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if(rawUserId == null)
-                return Unauthorized();
-            var userId = Guid.Parse(rawUserId);
+            if (rawUserId == null)
+                return Unauthorized(ApiResponse.Fail("Invalid user token"));
 
+            var userId = Guid.Parse(rawUserId);
             var portfolios = await portfolioRepository.GetPortfoliosByUserAndTypeAsync(userId, typeId);
 
             if (refreshMarketPrice && portfolios.Count > 0)
             {
-                var distinctTickers = portfolios
-                    .Select(p => p.Asset?.Ticker)
-                    .Where(t => !string.IsNullOrWhiteSpace(t))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+                // Batch lookup: group portfolios by ticker to avoid N+1
+                var portfoliosByTicker = portfolios
+                    .Where(p => p.Asset?.Ticker != null)
+                    .GroupBy(p => p.Asset!.Ticker!, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
-                // Nhiều call ra ngoài; chạy song song để giảm latency.
+                var distinctTickers = portfoliosByTicker.Keys.ToList();
+
                 var tasks = distinctTickers.Select(async ticker =>
                 {
-                    // Tick­er -> Asset mapping: lấy asset đầu tiên theo ticker từ portfolios (đã Include Asset).
-                    var asset = portfolios.First(p => p.Asset != null && string.Equals(p.Asset.Ticker, ticker, StringComparison.OrdinalIgnoreCase)).Asset!;
+                    var asset = portfoliosByTicker[ticker].First().Asset!;
                     var price = await marketPriceService.GetCurrentPriceAsync(asset);
-                    return (ticker: ticker!, price);
+                    return (ticker, price);
                 });
 
                 var results = await Task.WhenAll(tasks);
                 var priceByTicker = results.ToDictionary(x => x.ticker, x => x.price, StringComparer.OrdinalIgnoreCase);
 
-                foreach (var p in portfolios)
+                foreach (var tickerGroup in portfoliosByTicker)
                 {
-                    var ticker = p.Asset?.Ticker;
-                    if (ticker != null && priceByTicker.TryGetValue(ticker, out var latest))
+                    if (priceByTicker.TryGetValue(tickerGroup.Key, out var latestPrice))
                     {
-                        // Update in-memory để mapper trả CurrentPrice/P-L theo giá mới nhất.
-                        if (p.Asset != null)
-                            p.Asset.CurrentPrice = latest;
+                        foreach (var p in tickerGroup.Value)
+                        {
+                            if (p.Asset != null)
+                                p.Asset.CurrentPrice = latestPrice;
+                        }
                     }
                 }
             }
 
             var dto = mapper.Map<List<PortfolioDto>>(portfolios);
-            return Ok(dto);
+            return Ok(ApiResponse<List<PortfolioDto>>.Ok(dto));
         }
-
     }
 }

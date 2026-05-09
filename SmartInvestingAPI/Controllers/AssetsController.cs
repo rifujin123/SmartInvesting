@@ -1,10 +1,10 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartInvestingAPI.Model.DTOs;
 using SmartInvestingAPI.Model.Domain;
 using SmartInvestingAPI.Repositories;
-using Microsoft.AspNetCore.Authorization;
+using SmartInvestingAPI.Model.Wrappers;
 using SmartInvestingAPI.Services;
 
 namespace SmartInvestingAPI.Controllers
@@ -24,32 +24,30 @@ namespace SmartInvestingAPI.Controllers
             this.mapper = mapper;
             this.marketPriceService = marketPriceService;
         }
-        //GET: /api/assets
+
         [HttpGet]
         public async Task<IActionResult> GetAllAssets()
         {
             var assets = await assetRepository.GetAllAsync();
-            return Ok(mapper.Map<List<AssetDto>>(assets));
+            return Ok(ApiResponse<List<AssetDto>>.Ok(mapper.Map<List<AssetDto>>(assets)));
         }
 
-        //GET: /api/assets/{id}
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id)
         {
             var asset = await assetRepository.GetByIdAsync(id);
             if (asset == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Asset not found"));
 
-            return Ok(mapper.Map<AssetDto>(asset));
+            return Ok(ApiResponse<AssetDto>.Ok(mapper.Map<AssetDto>(asset)));
         }
 
-        //POST: /api/assets
         [HttpPost]
-        //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] AddAssetRequestDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse.Fail("Invalid asset data"));
+
             var asset = mapper.Map<Asset>(request);
             asset.CreatedAt = DateTime.UtcNow;
             asset.IsActive = true;
@@ -64,55 +62,49 @@ namespace SmartInvestingAPI.Controllers
                 {
                     var marketPrice = await marketPriceService.GetCurrentPriceAsync(asset);
                     if (marketPrice <= 0)
-                        return BadRequest("FireAnt không trả giá hợp lệ cho mã này. Hãy nhập CurrentPrice thủ công hoặc kiểm tra ticker.");
+                        return BadRequest(ApiResponse.Fail("FireAnt does not return valid price for this ticker. Enter CurrentPrice manually or check the ticker."));
                     asset.CurrentPrice = marketPrice;
                 }
                 catch (Exception ex)
                 {
-                    return BadRequest(new
-                    {
-                        message = "Không lấy được giá tham chiếu từ FireAnt (hoặc loại tài sản chưa dùng FireAnt — ví dụ Gold: cần nhập CurrentPrice).",
-                        detail = ex.Message
-                    });
+                    return BadRequest(ApiResponse.Fail($"Cannot get reference price from FireAnt: {ex.Message}"));
                 }
             }
 
             var created = await assetRepository.CreateAsync(asset);
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, mapper.Map<AssetDto>(created));
+            return CreatedAtAction(nameof(GetById), new { id = created.Id },
+                ApiResponse<AssetDto>.Created(mapper.Map<AssetDto>(created)));
         }
 
-        //PUT: /api/assets/{id}
         [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateAssetRequestDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse.Fail("Invalid asset data"));
 
             var asset = mapper.Map<Asset>(request);
             asset.Id = id;
 
             var updated = await assetRepository.UpdateAsync(asset);
             if (updated == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Asset not found"));
 
-            return Ok(mapper.Map<AssetDto>(updated));
+            return Ok(ApiResponse<AssetDto>.Ok(mapper.Map<AssetDto>(updated)));
         }
 
-        //DELETE: /api/assets/{id}
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete([FromRoute] int id)
         {
             var existing = await assetRepository.DeleteAsync(id);
             if (existing == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Asset not found"));
 
-            return Ok(mapper.Map<AssetDto>(existing));
+            return Ok(ApiResponse<AssetDto>.Ok(mapper.Map<AssetDto>(existing), "Asset deleted successfully"));
         }
 
-        // POST: api/assets/market-prices/refresh?typeId=1
         [HttpPost("market-prices/refresh")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RefreshMarketPrices([FromQuery] int? typeId)
@@ -140,7 +132,7 @@ namespace SmartInvestingAPI.Controllers
 
                 if (newPrice <= 0)
                 {
-                    failures.Add(new { asset.Ticker, error = "Giá trả về không hợp lệ (<= 0)." });
+                    failures.Add(new { asset.Ticker, error = "Invalid price returned (<= 0)." });
                     continue;
                 }
 
@@ -149,7 +141,7 @@ namespace SmartInvestingAPI.Controllers
                 result.Add(new { asset.Id, asset.Ticker, OldPrice = oldPrice, NewPrice = updated?.CurrentPrice ?? newPrice });
             }
 
-            return Ok(new { updated = result, failed = failures });
+            return Ok(ApiResponse<object>.Ok(new { updated = result, failed = failures }));
         }
     }
 }

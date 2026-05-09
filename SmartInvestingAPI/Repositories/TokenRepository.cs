@@ -1,8 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using SmartInvestingAPI.Model.Domain;
 
 namespace SmartInvestingAPI.Repositories
 {
@@ -14,36 +16,53 @@ namespace SmartInvestingAPI.Repositories
         {
             this.configuration = configuration;
         }
-        public string CreateToken(IdentityUser<Guid> user, List<string> roles)
+
+        public (string Token, DateTime ExpiresAt) CreateToken(IdentityUser<Guid> user, List<string> roles)
         {
-            // Bước 1: tạo danh sách claims
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Email, user.Email!),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
             };
 
-            // Thêm roles vào token
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            // Bước 2: tạo key và thông tin ký
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]!));
-
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            // Bước 3: tạo đối tượng token
+            var durationMinutes = configuration.GetValue<int>("Jwt:DurationInMinutes", 60);
+            var expiresAt = DateTime.UtcNow.AddMinutes(durationMinutes);
+
             var token = new JwtSecurityToken(
                 configuration["Jwt:Issuer"],
                 configuration["Jwt:Audience"],
                 claims,
-                expires: DateTime.Now.AddMinutes(10),
+                expires: expiresAt,
                 signingCredentials: credentials);
 
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+            return (tokenString, expiresAt);
+        }
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+        public RefreshToken CreateRefreshToken(Guid userId, string? deviceInfo = null)
+        {
+            var refreshTokenDurationDays = configuration.GetValue<int>("Jwt:RefreshTokenDurationInDays", 7);
+            var randomNumber = new byte[64];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+
+            return new RefreshToken
+            {
+                UserId = userId,
+                Token = Convert.ToBase64String(randomNumber),
+                DeviceInfo = deviceInfo,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenDurationDays)
+            };
         }
     }
 }
+

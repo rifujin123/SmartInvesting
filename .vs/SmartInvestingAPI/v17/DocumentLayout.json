@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "D:\\GITHUB\\SmartInvestingAPI\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{2B5DF977-6B8A-408F-B124-094FBA761D89}|SmartInvestingAPI\\SmartInvestingAPI.csproj|d:\\github\\smartinvestingapi\\smartinvestingapi\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{2B5DF977-6B8A-408F-B124-094FBA761D89}|SmartInvestingAPI\\SmartInvestingAPI.csproj|solutionrelative:smartinvestingapi\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{2B5DF977-6B8A-408F-B124-094FBA761D89}|SmartInvestingAPI\\SmartInvestingAPI.csproj|d:\\github\\smartinvestingapi\\smartinvestingapi\\repositories\\sqlassetrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{2B5DF977-6B8A-408F-B124-094FBA761D89}|SmartInvestingAPI\\SmartInvestingAPI.csproj|solutionrelative:smartinvestingapi\\repositories\\sqlassetrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -95,10 +99,6 @@
       "RelativeMoniker": "D:0:0:{2B5DF977-6B8A-408F-B124-094FBA761D89}|SmartInvestingAPI\\SmartInvestingAPI.csproj|solutionrelative:smartinvestingapi\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{2B5DF977-6B8A-408F-B124-094FBA761D89}|SmartInvestingAPI\\SmartInvestingAPI.csproj|d:\\github\\smartinvestingapi\\smartinvestingapi\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{2B5DF977-6B8A-408F-B124-094FBA761D89}|SmartInvestingAPI\\SmartInvestingAPI.csproj|solutionrelative:smartinvestingapi\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{2B5DF977-6B8A-408F-B124-094FBA761D89}|SmartInvestingAPI\\SmartInvestingAPI.csproj|d:\\github\\smartinvestingapi\\smartinvestingapi\\services\\investmentorderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{2B5DF977-6B8A-408F-B124-094FBA761D89}|SmartInvestingAPI\\SmartInvestingAPI.csproj|solutionrelative:smartinvestingapi\\services\\investmentorderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -126,7 +126,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 230,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 11,
           "Children": [
             {
               "$type": "Bookmark",
@@ -142,7 +142,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "SQLAssetRepository.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Repositories\\SQLAssetRepository.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Repositories\\SQLAssetRepository.cs",
@@ -155,7 +155,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "CategoriesController.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Controllers\\CategoriesController.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Controllers\\CategoriesController.cs",
@@ -163,12 +163,11 @@
               "RelativeToolTip": "SmartInvestingAPI\\Controllers\\CategoriesController.cs",
               "ViewState": "AgIAAAwAAAAAAAAAAAAuwBAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-08T04:36:58.55Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-08T04:36:58.55Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "TransactionDto.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\DTOs\\TransactionDto.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\DTOs\\TransactionDto.cs",
@@ -180,7 +179,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "PortfolioDto.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\DTOs\\PortfolioDto.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\DTOs\\PortfolioDto.cs",
@@ -192,7 +191,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "BaseAuditable.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\Domain\\BaseAuditable.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\Domain\\BaseAuditable.cs",
@@ -204,7 +203,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 11,
               "Title": "Wallet.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\Domain\\Wallet.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\Domain\\Wallet.cs",
@@ -216,7 +215,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "Budget.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\Domain\\Budget.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\Domain\\Budget.cs",
@@ -228,7 +227,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 9,
               "Title": "Category.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\Domain\\Category.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\Domain\\Category.cs",
@@ -240,7 +239,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Program.cs",
+              "RelativeDocumentMoniker": "SmartInvestingAPI\\Program.cs",
+              "ToolTip": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Program.cs",
+              "RelativeToolTip": "SmartInvestingAPI\\Program.cs",
+              "ViewState": "AgIAAAEAAAAAAAAAAAAIwAgAAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-26T14:01:32.308Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
               "Title": "InvestmentOrder.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\Domain\\InvestmentOrder.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\Domain\\InvestmentOrder.cs",
@@ -252,7 +264,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Transaction.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\Domain\\Transaction.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\Domain\\Transaction.cs",
@@ -264,7 +276,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 7,
               "Title": "AssetPricesHistory.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\Domain\\AssetPricesHistory.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\Domain\\AssetPricesHistory.cs",
@@ -276,7 +288,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "Portfolio.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\Domain\\Portfolio.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\Domain\\Portfolio.cs",
@@ -288,7 +300,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "IMarketPriceService.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Services\\IMarketPriceService.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Services\\IMarketPriceService.cs",
@@ -300,7 +312,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "MarketPriceService.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Services\\MarketPriceService.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Services\\MarketPriceService.cs",
@@ -312,7 +324,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 14,
               "Title": "InvestmentOrdersController.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Controllers\\InvestmentOrdersController.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Controllers\\InvestmentOrdersController.cs",
@@ -324,7 +336,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 17,
               "Title": "Asset.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Model\\Domain\\Asset.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Model\\Domain\\Asset.cs",
@@ -336,7 +348,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 23,
               "Title": "appsettings.json",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\appsettings.json",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\appsettings.json",
@@ -348,19 +360,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
-              "Title": "Program.cs",
-              "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Program.cs",
-              "RelativeDocumentMoniker": "SmartInvestingAPI\\Program.cs",
-              "ToolTip": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Program.cs",
-              "RelativeToolTip": "SmartInvestingAPI\\Program.cs",
-              "ViewState": "AgIAABIAAAAAAAAAAIBJwAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-26T14:01:32.308Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 13,
               "Title": "AssetsController.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Controllers\\AssetsController.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Controllers\\AssetsController.cs",
@@ -372,7 +372,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 18,
               "Title": "FireAntService.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Services\\FireAntService.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Services\\FireAntService.cs",
@@ -384,7 +384,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 21,
               "Title": "TokenRepository.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Repositories\\TokenRepository.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Repositories\\TokenRepository.cs",
@@ -396,7 +396,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 22,
               "Title": "FireAntAuthService.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Services\\FireAntAuthService.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Services\\FireAntAuthService.cs",
@@ -408,7 +408,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 19,
               "Title": "IFireAntService.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Services\\IFireAntService.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Services\\IFireAntService.cs",
@@ -420,7 +420,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 20,
               "Title": "IInvestmentOrderService.cs",
               "DocumentMoniker": "D:\\GITHUB\\SmartInvestingAPI\\SmartInvestingAPI\\Services\\IInvestmentOrderService.cs",
               "RelativeDocumentMoniker": "SmartInvestingAPI\\Services\\IInvestmentOrderService.cs",

@@ -29,14 +29,18 @@ namespace SmartInvestingAPI.Services
             var wallet = await dbContext.Wallets
                 .FirstOrDefaultAsync(w => w.Id == walletId && w.UserId == userId && w.IsActive);
             if (wallet == null)
-                throw new InvalidOperationException("Wallet does not exist or does not belong to current user.");
+                throw new KeyNotFoundException("Wallet does not exist or does not belong to current user.");
+
+            var originalRowVersion = wallet.RowVersion;
+            var buyCost = quantity * price + fee;
+
+            if (wallet.Balance < buyCost)
+                throw new InvalidOperationException("Insufficient wallet balance.");
 
             var asset = await dbContext.Assets
                 .FirstOrDefaultAsync(a => a.Id == assetId && a.IsActive);
             if (asset == null)
                 throw new InvalidOperationException("Asset does not exist.");
-
-            var buyCost = quantity * price + fee;
 
             var portfolio = await dbContext.Portfolios
                 .FirstOrDefaultAsync(p => p.UserId == userId && p.AssetId == assetId && p.IsActive);
@@ -81,8 +85,16 @@ namespace SmartInvestingAPI.Services
             wallet.Balance -= buyCost;
             wallet.LastUpdated = DateTime.UtcNow;
 
-            await dbContext.InvestmentOrders.AddAsync(order);
             await dbContext.SaveChangesAsync();
+
+            // Verify RowVersion changed (concurrency check)
+            if (originalRowVersion != null && wallet.RowVersion != null && 
+                !wallet.RowVersion.SequenceEqual(originalRowVersion))
+            {
+                await tx.RollbackAsync();
+                throw new DbUpdateConcurrencyException("Wallet balance was modified by another process. Please retry.");
+            }
+
             await tx.CommitAsync();
 
             return order;
@@ -104,12 +116,14 @@ namespace SmartInvestingAPI.Services
             var wallet = await dbContext.Wallets
                 .FirstOrDefaultAsync(w => w.Id == walletId && w.UserId == userId && w.IsActive);
             if (wallet == null)
-                throw new InvalidOperationException("Wallet does not exist or does not belong to current user.");
+                throw new KeyNotFoundException("Wallet does not exist or does not belong to current user.");
+
+            var originalRowVersion = wallet.RowVersion;
 
             var portfolio = await dbContext.Portfolios
                 .FirstOrDefaultAsync(p => p.UserId == userId && p.AssetId == assetId && p.IsActive);
             if (portfolio == null)
-                throw new InvalidOperationException("Portfolio for this asset does not exist.");
+                throw new KeyNotFoundException("Portfolio for this asset does not exist.");
 
             if (portfolio.TotalQuantity < quantity)
                 throw new InvalidOperationException("Sell quantity exceeds current holding quantity.");
@@ -144,6 +158,15 @@ namespace SmartInvestingAPI.Services
 
             await dbContext.InvestmentOrders.AddAsync(order);
             await dbContext.SaveChangesAsync();
+
+            // Verify RowVersion changed (concurrency check)
+            if (originalRowVersion != null && wallet.RowVersion != null &&
+                !wallet.RowVersion.SequenceEqual(originalRowVersion))
+            {
+                await tx.RollbackAsync();
+                throw new DbUpdateConcurrencyException("Wallet balance was modified by another process. Please retry.");
+            }
+
             await tx.CommitAsync();
 
             return order;
@@ -152,11 +175,11 @@ namespace SmartInvestingAPI.Services
         private static void ValidateOrderInputs(decimal quantity, decimal price, decimal fee)
         {
             if (quantity <= 0)
-                throw new InvalidOperationException("Quantity must be greater than 0.");
-            if (price < 0)
-                throw new InvalidOperationException("Price must be greater than or equal to 0.");
+                throw new ArgumentException("Quantity must be greater than 0.");
+            if (price <= 0)
+                throw new ArgumentException("Price must be greater than 0.");
             if (fee < 0)
-                throw new InvalidOperationException("Fee must be greater than or equal to 0.");
+                throw new ArgumentException("Fee cannot be negative.");
         }
     }
 }

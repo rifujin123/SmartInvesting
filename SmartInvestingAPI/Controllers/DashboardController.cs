@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartInvestingAPI.Model.Domain;
 using SmartInvestingAPI.Model.DTOs;
+using SmartInvestingAPI.Model.Wrappers;
 using SmartInvestingAPI.Repositories;
 using SmartInvestingAPI.Services;
 
@@ -45,20 +46,29 @@ namespace SmartInvestingAPI.Controllers
         {
             var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (rawUserId == null)
-                return Unauthorized();
+                return Unauthorized(ApiResponse.Fail("Invalid user token"));
+
             var userId = Guid.Parse(rawUserId);
-
             var now = DateTime.UtcNow;
-            var m = month ?? now.Month;
-            var y = year ?? now.Year;
+            var targetMonth = month ?? now.Month;
+            var targetYear = year ?? now.Year;
 
-            var wallets = await walletRepository.GetAllByUserIdAsync(userId);
-            if (wallets == null)
-                wallets = new List<Wallet>();
+            // Run independent queries in parallel
+            var walletsTask = walletRepository.GetAllByUserIdAsync(userId);
+            var portfoliosTask = portfolioRepository.GetActivePortfoliosByUserAsync(userId);
+            var expenseTask = transactionRepository.GetTotalExpenseByUserForMonthAsync(userId, targetMonth, targetYear);
+            var budgetsTask = budgetRepository.GetByUserMonthYearAsync(userId, targetMonth, targetYear);
+
+            await Task.WhenAll(walletsTask, portfoliosTask, expenseTask, budgetsTask);
+
+            var wallets = walletsTask.Result ?? new List<Wallet>();
+            var portfolios = portfoliosTask.Result;
+            var totalExpense = expenseTask.Result;
+            var monthBudgets = budgetsTask.Result;
 
             var totalCash = wallets.Sum(w => w.Balance);
 
-            var portfolios = await portfolioRepository.GetActivePortfoliosByUserAsync(userId);
+            // Refresh market prices if requested (parallel API calls)
             if (refreshMarketPrices && portfolios.Count > 0)
             {
                 var tasks = portfolios.Select(async p =>
@@ -68,47 +78,37 @@ namespace SmartInvestingAPI.Controllers
                     return (portfolioId: p.Id, price);
                 });
                 var prices = await Task.WhenAll(tasks);
-                var map = prices.ToDictionary(x => x.portfolioId, x => x.price);
-                foreach (var p in portfolios)
+                var priceMap = prices.ToDictionary(x => x.portfolioId, x => x.price);
+                foreach (var p in portfolios.Where(p => p.Asset != null))
                 {
-                    if (p.Asset != null && map.TryGetValue(p.Id, out var latest))
-                        p.Asset.CurrentPrice = latest;
+                    if (priceMap.TryGetValue(p.Id, out var latest))
+                        p.Asset!.CurrentPrice = latest;
                 }
             }
 
-            decimal nav = 0;
-            foreach (var p in portfolios)
-            {
-                if (p.Asset == null)
-                    continue;
-                nav += p.TotalQuantity * p.Asset.CurrentPrice;
-            }
+            var nav = portfolios
+                .Where(p => p.Asset != null)
+                .Sum(p => p.TotalQuantity * p.Asset!.CurrentPrice);
 
-            var totalExpense = await transactionRepository.GetTotalExpenseByUserForMonthAsync(userId, m, y);
+            // FIX: Batch query to avoid N+1 - get all budget spending in one call
+            var categoryIds = monthBudgets.Select(b => b.CategoryId).ToList();
+            var spentByCategory = categoryIds.Any()
+                ? await transactionRepository.GetTotalSpentByUserForCategoriesMonthAsync(userId, categoryIds, targetMonth, targetYear)
+                : new Dictionary<int, decimal>();
 
-            var monthBudgets = await budgetRepository.GetByUserMonthYearAsync(userId, m, y);
-            var budgetRows = new List<DashboardBudgetRowDto>();
-            foreach (var b in monthBudgets)
+            var budgetRows = monthBudgets.Select(b => new DashboardBudgetRowDto
             {
-                var spent = await transactionRepository.GetTotalSpentByUserForCategoryMonthAsync(
-                    userId,
-                    b.CategoryId,
-                    b.Month,
-                    b.Year);
-                budgetRows.Add(new DashboardBudgetRowDto
-                {
-                    BudgetId = b.Id,
-                    CategoryName = b.Category?.Name ?? string.Empty,
-                    AmountLimit = b.AmountLimit,
-                    TotalSpent = spent,
-                    Remaining = b.AmountLimit - spent
-                });
-            }
+                BudgetId = b.Id,
+                CategoryName = b.Category?.Name ?? string.Empty,
+                AmountLimit = b.AmountLimit,
+                TotalSpent = spentByCategory.TryGetValue(b.CategoryId, out var spent) ? spent : 0,
+                Remaining = b.AmountLimit - (spentByCategory.TryGetValue(b.CategoryId, out spent) ? spent : 0)
+            }).ToList();
 
             var dto = new DashboardSummaryDto
             {
-                Year = y,
-                Month = m,
+                Year = targetYear,
+                Month = targetMonth,
                 TotalCashBalance = totalCash,
                 PortfolioNav = nav,
                 TotalWealth = totalCash + nav,
@@ -117,7 +117,7 @@ namespace SmartInvestingAPI.Controllers
                 Budgets = budgetRows
             };
 
-            return Ok(dto);
+            return Ok(ApiResponse<DashboardSummaryDto>.Ok(dto));
         }
     }
 }

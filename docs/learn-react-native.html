@@ -935,6 +935,171 @@
       white-space: pre;
     }
 
+    /* Minh họa web tương đương scale + opacity (RN: Animated + useNativeDriver) */
+    .rn-anim-mini {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin: 1rem 0 1.25rem;
+      padding: 1rem 1.1rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(24, 24, 27, 0.55);
+    }
+    .rn-anim-mini p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+      max-width: none;
+      flex: 1;
+      min-width: 200px;
+    }
+    .rn-anim-dot {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(145deg, #22d3ee, #6366f1);
+      box-shadow: 0 10px 26px rgba(34, 211, 238, 0.28);
+      animation: rnPulseMini 2.4s ease-in-out infinite;
+    }
+    #animations-rn .rn-anim-dot.is-off {
+      animation: none;
+    }
+    @keyframes rnPulseMini {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      45% { transform: scale(1.1); opacity: 0.88; }
+    }
+
+    /* Demos có nút — ánh xạ Lab 1–3 (RN dùng Animated API) */
+    .anim-showcase-grid {
+      display: grid;
+      gap: 1rem;
+      margin: 0.85rem 0 1.5rem;
+    }
+    @media (min-width: 820px) {
+      .anim-showcase-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .anim-ex-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.9rem 1rem 1rem;
+      background: rgba(24, 24, 27, 0.6);
+    }
+    .anim-ex-card h5 {
+      margin: 0 0 0.35rem;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #fafafa;
+    }
+    .anim-ex-card .map {
+      margin: 0 0 0.65rem;
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .anim-ex-card > p.note {
+      margin: 0 0 0.6rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+      max-width: none;
+    }
+    .anim-ex-stage {
+      height: 132px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.06), transparent 55%), #0c0c0f;
+      border-radius: 12px;
+      margin-bottom: 0.65rem;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+    .anim-ex-bar {
+      min-width: 120px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #22d3ee, #6366f1);
+      color: #09090b;
+      font-weight: 800;
+      font-size: 0.82rem;
+      text-align: center;
+      box-shadow: 0 10px 24px rgba(34, 211, 238, 0.25);
+    }
+    /* Lab 1 tương đương: timing opacity */
+    #animExFadeBox {
+      opacity: 0;
+      transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #animExFadeBox.is-on {
+      opacity: 1;
+    }
+    /* Lab 2: scale nhấn (CSS ≈ spring nhanh) */
+    #animExScaleWrap {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #animExScaleBox {
+      transition: transform 0.08s ease-out;
+    }
+    #animExScaleWrap.is-down #animExScaleBox {
+      transform: scale(0.94);
+    }
+    /* Lab 3: parallel timing opacity + translateY */
+    #animExComboBox {
+      opacity: 0;
+      transform: translateY(18px);
+      transition:
+        opacity 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #animExComboBox.is-on {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .anim-ex-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .method-steps {
+      margin: 0.85rem 0 1rem;
+      padding-left: 1.35rem;
+      color: #d4d4d8;
+      max-width: 72ch;
+    }
+    .method-steps li { margin: 0.4rem 0; }
+    .lab-block {
+      border: 1px solid rgba(34, 211, 238, 0.28);
+      border-radius: 14px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0 1.35rem;
+      background: rgba(24, 24, 27, 0.5);
+    }
+    .lab-block h4 {
+      margin: 0 0 0.65rem;
+      font-size: 1rem;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .lab-block .criteria {
+      margin: 0.75rem 0 0;
+      padding: 0.65rem 0.85rem;
+      border-radius: 10px;
+      background: rgba(12, 12, 15, 0.65);
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+      color: #cbd5e1;
+    }
+    .lab-block .criteria strong { color: #86efac; }
+
     footer{
       margin-top: 3rem;
       padding-top: 1.5rem;
@@ -950,6 +1115,7 @@
       <h2>Mục lục</h2>
       <ol class="toc">
         <li><a href="#roadmap">Roadmap Zero → Hero</a></li>
+        <li><a href="#study-method">Cách tự thực hành</a></li>
         <li><a href="#zero">React Native là gì</a></li>
         <li><a href="#js">JavaScript cần thiết</a></li>
         <li><a href="#react">React căn bản</a></li>
@@ -963,6 +1129,7 @@
         <li><a href="#demo-one-screen">Demo 1 screen + thư viện</a></li>
         <li><a href="#css-modern">Mẫu UI hiện đại (CSS)</a></li>
         <li><a href="#mastery-ui">Thành thạo UI — lộ trình nâng cao</a></li>
+        <li><a href="#animations-rn">Animation + demo trực quan Lab 1–3</a></li>
         <li><a href="#data-and-api">Dữ liệu &amp; gọi API</a></li>
         <li><a href="#map">Ánh xạ RN ↔ CSS demo</a></li>
       </ol>
@@ -974,8 +1141,8 @@
         <h1>Học React Native (JavaScript) từ con số 0</h1>
         <p>
           Trang độc lập: lộ trình <strong>Zero → Hero</strong> (từ JS/React tới UI “đủ chuyên”, rồi tới <strong>fetch API</strong>),
-          kèm ví dụ và demo tương tác trong trình duyệt cho style &amp; hook. Bắt đầu từ mục
-          <a href="#roadmap">Roadmap Zero → Hero</a> dưới đây.
+          kèm ví dụ và demo tương tác trong trình duyệt cho style &amp; hook.
+          Để <strong>không học suông</strong>, đọc thêm <a href="#study-method">Cách tự thực hành</a> rồi mới đi theo <a href="#roadmap">Roadmap</a>.
         </p>
       </header>
 
@@ -1011,6 +1178,7 @@
                 <li><a href="#demo-one-screen">Mock 1 screen + Safe Area</a></li>
                 <li><a href="#css-modern">Mô hình UI hiện đại</a></li>
                 <li><a href="#mastery-ui">Checklist UI nâng cao</a></li>
+                <li><a href="#animations-rn">timing / spring · useNativeDriver</a></li>
               </ul>
             </div>
             <div class="road-phase">
@@ -1057,7 +1225,7 @@
                 <tr>
                   <td>Tuần 5–6 — UI xịn</td>
                   <td>Modal, refresh, empty/loading, form, ảnh, keyboard</td>
-                  <td><a href="#mastery-ui">Mục mastery UI</a> · thực hành trong app</td>
+                  <td><a href="#mastery-ui">Mục mastery UI</a>, <a href="#animations-rn">animation</a> · app</td>
                   <td>Copy pattern từ design system (hoặc học 1 lib UI)</td>
                 </tr>
                 <tr>
@@ -1082,6 +1250,11 @@
             <strong>UI ổn + luồng dữ liệu rõ</strong> (load / error / empty) và triển khai build thật khi cần.
           </div>
 
+          <p style="margin-top:1.25rem;font-size:0.92rem;color:#a1a1aa;max-width:65ch">
+            Mỗi chủ đề trong trang (hook, flex, <a href="#animations-rn">animation</a>…) đều nên kết thúc bằng <strong>một thay đổi bạn tự gõ trên Expo</strong> —
+            xem <a href="#study-method">Cách tự thực hành</a>.
+          </p>
+
           <h3>Sau Hero (tuỳ chọn — không cần thứ tự cố định)</h3>
           <ul>
             <li><strong>TypeScript</strong>: thêm vào Expo cho autocompletion DTO/backend.</li>
@@ -1089,6 +1262,41 @@
             <li><strong>Kiểm thử UI</strong>: Maestro hoặc Detox — sau khi flow login + list đã chạy tay ổn.</li>
             <li><strong>Native module</strong>: chỉ khi không có expo module tương đương.</li>
           </ul>
+        </section>
+
+        <section id="study-method">
+          <h2>Cách dùng trang này để tự làm cho riêng bạn — không chỉ đọc</h2>
+          <p style="max-width:72ch">
+            Tài liệu chỉ “đúng” khi bạn <strong>tạo được một đoạn UI hoặc hành vi trên Expo</strong> mang dấu ấn của bạn (đặt tên component khác,
+            chỉnh sốDuration, chỉnh màu). Dưới đây là quy trình lặp lại được cho <em>mọi</em> mục trong trang.
+          </p>
+
+          <h3>Chu trình 4 bước (mỗi lần học một ý nhỏ)</h3>
+          <ol class="method-steps">
+            <li><strong>Chọn “một mục tiêu nhìn thấy”</strong> — ví dụ: “ô chữ fade-in khi vào màn”, không phải “đọc hết Animated”.</li>
+            <li><strong>Vào dự án Expo</strong> — một file một screen (<code>app/(tabs)/index.tsx</code> hay <code>screens/Lab.tsx</code> tuỳ cấu trúc của bạn).</li>
+            <li><strong>Chép tối thiểu</strong> từ ví dụ trong trang, <strong>sửa một thứ</strong> của riêng bạn ngay trong lần đầu: tên prop, copy tiếng Việt, đổi <code>duration</code>.</li>
+            <li><strong>Tự chứng minh</strong>: điện thoại reload được; nếu lỗi đỏ — đọc chữ lỗi, sửa đến khi hết (hoặc ghi lại câu lỗi để tra docs).</li>
+          </ol>
+
+          <h3>Quy tắc “của riêng mình”</h3>
+          <ul class="method-steps">
+            <li>Đổi tên component / file sao cho bạn nhớ <em>đó là bài bạn đã làm</em> — ví dụ <code>MyFadeCard</code>, không để mãi <code>Panel</code> như sách.</li>
+            <li>Sau khi chạy được, chỉnh <strong>hai thông số</strong> chủ đề (timing, friction, delay, gap…) và quan sát — đó mới là cách “đồ” animation/layout.</li>
+            <li>Viết vào README hoặc ghi chú 1 dòng: <em>“Hôm nay: fade-in 320ms → 520ms nhìn nặng tay hơn”</em>.</li>
+          </ul>
+
+          <h3>Liên kết các mục trong trang này với việc bạn tay gõ</h3>
+          <ul class="method-steps">
+            <li><a href="#visual-hooks">Hooks demo</a> trên browser → tái hiện bằng <code>useState</code> trong một screen Expo.</li>
+            <li><a href="#visual-style-guide">Flex demo</a> → chỉnh thật <code>justifyContent</code> / <code>gap</code> trong <code>View</code>.</li>
+            <li><a href="#animations-rn">Animation</a> → làm đúng <strong>các Lab</strong> trong mục đó trên Expo (không bỏ qua phần “xong khi…”).</li>
+            <li><a href="#data-and-api">API</a> → gọi một URL mock (vd. JSONPlaceholder), log response ra console rồi mới ghép vào UI.</li>
+          </ul>
+
+          <div class="callout">
+            Nếu bạn chỉ đọc không gõ — kiến thức sẽ trôi. Chuẩn tối thiểu: <strong>mỗi phiên học 20–40 phút = một commit nhỏ</strong> (hoặc một file đổi được thấy rõ trên máy).
+          </div>
         </section>
 
         <section id="zero">
@@ -1831,12 +2039,278 @@ const styles = StyleSheet.create({
 
           <h3>Động &amp; cảm giác “premium”</h3>
           <ul>
-            <li><code>Animated</code> API hoặc Reanimated — bắt đầu từ opacity / translate nhỏ (nút nhấn, chuyển tab).</li>
+            <li>Xem chi tiết cách làm từng bước tại <a href="#animations-rn">Animation cơ bản (Animated API)</a>.</li>
+            <li>Lên tay <strong>Reanimated</strong> sau khi quen timing/spring — Gesture Handler + Navigation thường đi kèm.</li>
             <li>Micro-interaction nhẹ tốt hơn hoạt họa dài không cần thiết.</li>
           </ul>
 
           <h3>Gợi ý một “capstone UI” trong 2–3 ngày</h3>
           <p>Xây cùng lúc: bottom tabs + một stack + màn có <code>FlatList</code>, pull refresh, ô tìm kiếm điều khiển danh sách bằng state, và màn chi tiết nhận <code>route.params</code>.</p>
+        </section>
+
+        <section id="animations-rn">
+          <h2>Animation cơ bản trong React Native</h2>
+          <p>
+            RN tích hợp API <strong><code>Animated</code></strong> (built-in): bạn có các giá trị động rồi “chạy” chúng theo thời gian (<code>timing</code>),
+            lò xo (<code>spring</code>), hoặc chậm dần (<code>decay</code>). Mục tiêu thực dụng: <strong>mở màn nhẹ</strong>, <strong>nút bấm co giãn</strong>,
+            <strong>toast / badge</strong> — ít fps hơn là quả animation dài không cần thiết.
+          </p>
+
+          <p style="font-size:0.93rem;color:#cbd5e1;max-width:72ch;margin-top:-0.25rem">
+            Phần dưới tách hai lớp: <strong>A) Lab — bạn tự làm trên Expo theo checklist</strong> → <strong>B) Tra cứu</strong> (mục 1–10) khi quên chi tiết syntax.
+            Trước khi đọc sang B, cố làm xong ít nhất <strong>Lab 1</strong>. Xem thêm phương pháp chung tại <a href="#study-method">Cách tự thực hành</a>.
+          </p>
+
+          <h3>A) Làm trên Expo — lộ trình của riêng bạn (~45–75 phút)</h3>
+
+          <div class="lab-block">
+            <h4>Chuẩn bị (cùng mọi lab)</h4>
+            <ol class="method-steps">
+              <li>Mở dự án Expo; chọn <strong>một screen</strong> bạn chỉnh được (tab đầu cũng được).</li>
+              <li>Tạo file mới ví dụ <code>screens/AnimLab.tsx</code> <em>hoặc</em> làm luôn trong màn có sẵn — miễn <strong>một chỗ cố định</strong> để không lẫn với ví dụ gốc.</li>
+              <li>Đảm bảo <code>npx expo start</code> chạy được; có lỗi đỏ thì sửa rồi mới chồng animation.</li>
+            </ol>
+          </div>
+
+          <div class="lab-block">
+            <h4>Lab 1 — Fade-in của bạn (15–25 phút)</h4>
+            <p style="margin:0 0 0.65rem;color:#cbd5e1;font-size:0.92rem">Mục tiêu nhìn thấy: khối có nền tối và dòng chữ <strong>mờ dần thành rõ</strong> khi màn vừa hiện.</p>
+            <ol class="method-steps">
+              <li>Tạo component <strong>đặt tên bạn chọn</strong> (vd. <code>GreetingRibbon</code>).</li>
+              <li><strong>Bước tối thiểu chạy được:</strong> <code>const opacity = useRef(new Animated.Value(0)).current</code> và render <code>&lt;Animated.View style={[styles.box,{opacity}]}&gt;</code>.</li>
+              <li>Khi vào màn (<code>useEffect(..., [])</code>), chạy <code>Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }).start()</code>.</li>
+              <li>Lưu file — điện thoại reload. Nếu không thấy gì → kiểm tra <code>styles.box</code> có kích thước và màu nền thấy rõ.</li>
+              <li><strong>Đổi thành “của bạn”:</strong> tăng <code>duration</code> lên 900ms và xem cảm giác; hay đặt copy tiếng Việt bên trong ô.</li>
+            </ol>
+            <p class="criteria"><strong>Xong Lab 1 khi:</strong> bạn biết chắc “opacity từ 0→1” là do dòng <code>start()</code> của bạn, không phải may mắn hot reload.</p>
+          </div>
+
+          <div class="lab-block">
+            <h4>Lab 2 — Nút bấm co lại (15–25 phút)</h4>
+            <p style="margin:0 0 0.65rem;color:#cbd5e1;font-size:0.92rem">Mục tiêu: giữ nguyên ý <a href="#animations-rn">mục 6</a> (Pressable + spring) nhưng <strong>component tên bạn</strong>, màu bạn chọn.</p>
+            <ol class="method-steps">
+              <li>Copy cấu trúc <code>Pressable</code> bọc <code>Animated.View</code> với <code>transform: [{ scale }]</code>.</li>
+              <li>Gắn <code>onPressIn</code> / <code>onPressOut</code>; thử hai giá trị <code>toValue</code> khi nhấn — ví dụ <code>0.92</code> VS <code>0.96</code> — chọn “cảm nhận” bạn thích.</li>
+              <li>Thử <strong>sai chủ đích</strong> một lần: bỏ <code>useNativeDriver</code> hoặc gõ <code>false</code> và xem cảnh báo / khác biệt (rồi khôi phục <code>true</code> cho transform).</li>
+            </ol>
+            <p class="criteria"><strong>Xong Lab 2 khi:</strong> bạn mô tả được bằng lời “nhấn xuống scale giảm, thả tay về 1”. Đủ để tái làm không nhìn sách.</p>
+          </div>
+
+          <div class="lab-block">
+            <h4>Lab 3 — Hai thứ cùng lúc (tuỳ chọn, +20–30 phút)</h4>
+            <p style="margin:0 0 0.65rem;color:#cbd5e1;font-size:0.92rem">Mục tiêu: ô vừa <strong>hơi trượt từ dưới</strong> vừa <strong>hết mờ</strong> trong ~300ms (<code>parallel</code> hai <code>timing</code>).</p>
+            <ol class="method-steps">
+              <li>Hai giá trị: <code>opacity</code> từ 0→1 và <code>translateY</code> từ <code>12</code>→<code>0</code>.</li>
+              <li><code>Animated.parallel([timing(opacity,...), timing(translateY,...)]).start()</code> — bọc trong <code>Animated.View style={{ opacity, transform:[{translateY}] }}</code>.</li>
+            </ol>
+            <p class="criteria"><strong>Xong Lab 3 khi:</strong> bạn tự chỉnh được hai con số (khoảng trượt, duration) mà không cần copy nguyên block từ trang.</p>
+          </div>
+
+          <h4 id="animation-showcase">Mẫu trực quan trong trình duyệt (ứng Lab 1–3)</h4>
+          <p style="font-size:0.9rem;color:#cbd5e1;max-width:72ch;margin:0.35rem 0 0.85rem;">
+            Ba ô dưới đây mô phỏng <strong>đúng hành vi</strong> bạn sẽ lập trong Expo (<code>Animated.timing</code>, nhấn co <code>scale</code>,
+            <code>parallel</code> với opacity + <code>translateY</code>). CSS không thay chỗ RN — chỉ để <strong>mắt và tay</strong> thấy trước khi gõ.
+          </p>
+
+          <div class="anim-showcase-grid">
+            <div class="anim-ex-card">
+              <div class="map">≈ Lab 1 · Animated.timing + opacity</div>
+              <h5>Fade-in</h5>
+              <p class="note">Ở RN: mount → chạy <code>timing</code> opacity 0→1. Đây dùng <code>transition: opacity</code>.</p>
+              <div class="anim-ex-stage" aria-hidden="true">
+                <div id="animExFadeBox" class="anim-ex-bar" role="presentation">Chào từ Lab 1</div>
+              </div>
+              <div class="anim-ex-actions">
+                <button type="button" class="pill-btn" id="animExFadeRun">Chạy fade</button>
+                <button type="button" class="pill-btn" id="animExFadeReset">Đặt lại ẩn</button>
+              </div>
+            </div>
+
+            <div class="anim-ex-card">
+              <div class="map">≈ Lab 2 · onPressIn / Out + spring scale</div>
+              <h5>Nhấn co (giữ tay)</h5>
+              <p class="note">Ở RN: <code>Pressable</code> + spring <code>toValue</code> 0.94 → 1. Web: co nhanh bằng CSS (độ “nảy” hơn kém spring thật).</p>
+              <div class="anim-ex-stage">
+                <div id="animExScaleWrap">
+                  <div id="animExScaleBox" class="anim-ex-bar">Giữ tay / nhấn chuột</div>
+                </div>
+              </div>
+              <p class="note" style="margin:0;font-size:0.76rem;color:#71717a">Gợi ý: thử trên điện thoại (vuốt giữ ô).</p>
+            </div>
+
+            <div class="anim-ex-card">
+              <div class="map">≈ Lab 3 · Animated.parallel</div>
+              <h5>Trượt lên + hết mờ</h5>
+              <p class="note">Hai thuộc tính cùng chạy. RN dùng <code>parallel</code>; đây gộp <code>transition</code> hai property.</p>
+              <div class="anim-ex-stage" aria-hidden="true">
+                <div id="animExComboBox" class="anim-ex-bar">Song song hai hiệu ứng</div>
+              </div>
+              <div class="anim-ex-actions">
+                <button type="button" class="pill-btn" id="animExComboRun">Chạy song song</button>
+                <button type="button" class="pill-btn" id="animExComboReset">Đặt lại</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout" style="margin-top:-0.25rem;">
+            <strong>So sánh nhanh:</strong> RN <code>spring</code> có đặc tả lò xo (friction, tension…); trên web bạn chỉ thấy gần giống bằng <code>cubic-bezier</code> /
+            độ dài transition. Logic “bao nhiêu state, khi nào <code>start()</code>?” — một khi nắm ở Lab là chuyển sang RN được.
+          </div>
+
+          <h4>Hay kẹt — tự cứu nhanh</h4>
+          <div class="road-table-wrap" style="margin-top: 0.5rem;">
+            <table class="road-table" style="min-width: 520px;">
+              <thead>
+                <tr>
+                  <th>Triệu chứng</th>
+                  <th>Hướng xử</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Màn không đổi / animation “đứng im”</td><td>Đang chỉnh <code>Animated.Value</code> mới mỗi render → phải nằm trong <code>useRef(...).current</code>.</td></tr>
+                <tr><td>Đỏ chữ kiểu <code style="white-space:normal">nativeDriver</code></td><td>Thuộc tính bạn animate không được native driver → đổi sang <code>opacity</code>/<code>transform</code> hoặc đặt <code>useNativeDriver: false</code> (hay chớm).</td></tr>
+                <tr><td>Giật, JS thread nặng</td><td>Tránh animate layout nặng cùng lúc scroll dài list; giữ nhẹ từng micro-interaction.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Sau các lab — “mở rộng của riêng bạn” (chọn một)</h4>
+          <ul class="method-steps">
+            <li>Gắn một <strong>floating button</strong> (ô tròn) với nhấn co scale — đặt ở góc khác FAB mặc định.</li>
+            <li>Khi có <strong>FlatList</strong>, thử chỉ một hàng có <code>opacity</code> khác các hàng khác nhờ <code>useEffect</code> + delay ngắn (chờ list ổn định rồi nâng cấp lên stagger).</li>
+            <li>Đánh dấu trong code <code>{/* LAB: chỉnh duration ở đây */ }</code> — lần sau mở file biết chỗ chỉnh.</li>
+          </ul>
+
+          <hr style="border: none; border-top: 1px solid var(--border); margin: 2rem 0 1.5rem;" />
+
+          <p style="font-size:0.9rem;color:var(--muted);margin-bottom:0.75rem"><strong>Minh họa web nhỏ</strong> — không thay Lab trên Expo; chỉ giúp mắt quen nhịp scale + opacity</p>
+
+          <div class="rn-anim-mini">
+            <div class="rn-anim-dot" id="animDotPulse" aria-hidden="true"></div>
+            <p>
+              Minh họa <strong>CSS</strong> chỉ để mắt quen nhịp <em>scale + opacity</em> — trên máy RN bạn dùng <code>Animated.timing</code>/<code>spring</code>
+              với <code>transform</code> và <code>opacity</code> + <code>useNativeDriver: true</code>.
+            </p>
+            <button type="button" class="pill-btn" id="animTogglePulse" aria-pressed="true">Tắt/bật vòng lặp</button>
+          </div>
+
+          <h3>B) Tra cứu — chi tiết API</h3>
+          <p style="font-size:0.93rem;color:#cbd5e1;max-width:72ch;margin-top:-0.25rem">
+            Các đoạn 1–10 bên dưới là tài liệu tham chiếu. Khi quên cụ thể (tham số <code>spring</code>, cú pháp <code>parallel</code>…),
+            nhảy tới đúng mục; khi học lần đầu — ưu tiên làm Lab ở phần A trước.
+          </p>
+
+          <h3>1. <code>Animated.Value</code> và component function</h3>
+          <p>Giữ value trong ref để không tạo mới mỗi render (tránh animation reset).</p>
+          <pre><code>import { useEffect, useRef } from "react";
+import { Animated, StyleSheet } from "react-native";
+
+function Panel() {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() =&gt; {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 320,
+      useNativeDriver: true,
+    }).start();
+  }, [opacity]);
+
+  return &lt;Animated.View style={[styles.box, { opacity }]} /&gt;;
+}
+
+const styles = StyleSheet.create({
+  box: { height: 48, margin: 16, borderRadius: 12, backgroundColor: "#27272a" },
+});</code></pre>
+
+          <h3>2. <code>useNativeDriver: true</code> là gì?</h3>
+          <p>
+            Khi là <strong><code>true</code></strong>, phép biến đổi chạy trên luồng native (ưu tiên các thuộc tính được hỗ trợ như <code>opacity</code>,
+            <code>transform</code>: translate, scale, rotate). Vuông góc là <strong>mượt, ít giật JS</strong>.
+          </p>
+          <div class="callout">
+            <strong>Giới hạn:</strong> với <code>useNativeDriver: true</code> bạn <strong>không</strong> animate <code>height</code>,
+            <code>width</code>, <code>backgroundColor</code> trực tiếp trên cùng value kiểu cũ — phải tắt native driver (<code>false</code>) hoặc đổi cách tiếp cận
+            (layout animation, hoặc Reanimated 2+/3 layout).
+          </div>
+
+          <h3>3. <code>Animated.timing</code> — tuyến tính hoặc easing</h3>
+          <pre><code>Animated.timing(translateY, {
+  toValue: 0,
+  duration: 260,
+  useNativeDriver: true,
+}).start(() =&gt; console.log("xong"));</code></pre>
+          <p>
+            Muốn cảm giác “ease out” có thể dùng <code>Easing.out(Easing.cubic)</code> (import <code>Easing</code> từ <code>react-native</code>).
+          </p>
+
+          <h3>4. <code>Animated.spring</code> — nút nhảy tự nhiên</h3>
+          <pre><code>Animated.spring(scale, {
+  toValue: 1,
+  friction: 4,
+  useNativeDriver: true,
+}).start();</code></pre>
+
+          <h3>5. <code>translateX</code> / <code>scale</code> trên một <code>Animated.View</code></h3>
+          <pre><code>const anim = useRef(new Animated.Value(1)).current;
+
+&lt;Animated.View
+  style={{
+    transform: [{ scale: anim }],
+  }}
+&gt;</code></pre>
+          <p>Nhiều transform: một mảng, ví dụ <code>[{ translateY }, { scale }]</code> — có thể dùng nhiều <code>Value</code> khác nhau.</p>
+
+          <h3>6. Ghép gesture nhấn: co rồi về (micro-interaction)</h3>
+          <pre><code>import { Pressable, Animated, Text } from "react-native";
+import { useRef } from "react";
+
+export function PulseButton({ onPress, label }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const down = () =&gt; {
+    Animated.spring(scale, { toValue: 0.94, friction: 5, useNativeDriver: true }).start();
+  };
+  const up = () =&gt; {
+    Animated.spring(scale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+  };
+
+  return (
+    &lt;Pressable onPress={onPress} onPressIn={down} onPressOut={up}&gt;
+      &lt;Animated.View style={{ transform: [{ scale }], padding: 14, borderRadius: 14, backgroundColor: "#22d3ee" }}&gt;
+        &lt;Text style={{ fontWeight: "800" }}&gt;{label}&lt;/Text&gt;
+      &lt;/Animated.View&gt;
+    &lt;/Pressable&gt;
+  );
+}</code></pre>
+          <p><code>Text</code> vẫn bọc trong <code>Text</code> — ví dụ rút gọn; thực tế có thể tách <code>StyleSheet</code>.</p>
+
+          <h3>7. <code>interpolate</code> — một value, nhiều output</h3>
+          <p>Ví dụ thanh cuộn: input <code>scrollY</code> 0→100 map opacity header 1→0, hoặc đổi màu (lúc đó có thể cần <code>useNativeDriver: false</code> cho màu).</p>
+          <pre><code>const headerOpacity = scrollY.interpolate({
+  inputRange: [0, 80],
+  outputRange: [1, 0],
+  extrapolate: "clamp",
+});</code></pre>
+
+          <h3>8. Chạy nối tiếp / song song — <code>sequence</code>, <code>parallel</code>, <code>stagger</code></h3>
+          <pre><code>Animated.sequence([
+  Animated.timing(a, { toValue: 1, duration: 200, useNativeDriver: true }),
+  Animated.parallel([
+    Animated.timing(b, { toValue: 20, duration: 200, useNativeDriver: true }),
+    Animated.spring(c, { toValue: 1, useNativeDriver: true }),
+  ]),
+]).start();</code></pre>
+
+          <h3>9. <code>LayoutAnimation</code> (đổi layout một lần — list expand)</h3>
+          <p>Trước khi <code>setState</code> làm đổi kích thước subtree, có thể gọi <code>LayoutAnimation.configureNext(...)</code> (iOS mặc định, Android có thể cần bật <code>UIManager.setLayoutAnimationEnabledExperimental</code> trên bản cũ).</p>
+          <p>Không thay được toàn bộ <code>Animated</code>; dùng khi “ ô item mở rộng / thu nhỏ ” đơn giản.</p>
+
+          <h3>10. Bước tiếp: Reanimated (+ Gesture Handler)</h3>
+          <p>
+            Expo và React Navigation thường kéo <strong><code>react-native-reanimated</code></strong> — chạy worklet trên native, chủ động hơn cho gesture phức tạp, shared transitions.
+            Nên học đủ <strong>Animated</strong> cơ bản trước (timing, spring, transform, interpolate) rồi chuyển pattern sang Reanimated theo docs bản SDK bạn đang dùng.
+          </p>
         </section>
 
         <section id="data-and-api">
@@ -2174,6 +2648,53 @@ export async function postTransaction(body) {
           else clearFx();
         });
         if (fxOn.checked) startFx();
+      }
+
+      var animBtn = document.getElementById("animTogglePulse");
+      var animDot = document.getElementById("animDotPulse");
+      if (animBtn && animDot) {
+        animBtn.addEventListener("click", function () {
+          animDot.classList.toggle("is-off");
+          animBtn.setAttribute("aria-pressed", String(!animDot.classList.contains("is-off")));
+        });
+      }
+
+      var fadeBox = document.getElementById("animExFadeBox");
+      document.getElementById("animExFadeRun")?.addEventListener("click", function () {
+        if (!fadeBox) return;
+        fadeBox.classList.remove("is-on");
+        void fadeBox.offsetWidth;
+        fadeBox.classList.add("is-on");
+      });
+      document.getElementById("animExFadeReset")?.addEventListener("click", function () {
+        fadeBox?.classList.remove("is-on");
+      });
+
+      var comboBox = document.getElementById("animExComboBox");
+      document.getElementById("animExComboRun")?.addEventListener("click", function () {
+        if (!comboBox) return;
+        comboBox.classList.remove("is-on");
+        void comboBox.offsetWidth;
+        comboBox.classList.add("is-on");
+      });
+      document.getElementById("animExComboReset")?.addEventListener("click", function () {
+        comboBox?.classList.remove("is-on");
+      });
+
+      var scaleWrap = document.getElementById("animExScaleWrap");
+      function scaleDown() {
+        scaleWrap?.classList.add("is-down");
+      }
+      function scaleUp() {
+        scaleWrap?.classList.remove("is-down");
+      }
+      if (scaleWrap) {
+        scaleWrap.addEventListener("pointerdown", scaleDown);
+        scaleWrap.addEventListener("pointerup", scaleUp);
+        scaleWrap.addEventListener("pointercancel", scaleUp);
+        scaleWrap.addEventListener("pointerleave", function () {
+          if (scaleWrap.classList.contains("is-down")) scaleUp();
+        });
       }
     })();
   </script>

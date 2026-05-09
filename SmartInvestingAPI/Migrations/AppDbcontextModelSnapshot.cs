@@ -95,6 +95,10 @@ namespace SmartInvestingAPI.Migrations
 
                     b.HasIndex("AssetId");
 
+                    b.HasIndex("RecordedAt");
+
+                    b.HasIndex("AssetId", "RecordedAt");
+
                     b.ToTable("AssetsPricesHistory");
                 });
 
@@ -223,7 +227,11 @@ namespace SmartInvestingAPI.Migrations
 
                     b.HasIndex("AssetId");
 
+                    b.HasIndex("EventDate");
+
                     b.HasIndex("WalletId");
+
+                    b.HasIndex("WalletId", "EventDate");
 
                     b.ToTable("IncomeEvents");
                 });
@@ -260,9 +268,13 @@ namespace SmartInvestingAPI.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OrderDate");
+
                     b.HasIndex("PortfolioId");
 
                     b.HasIndex("WalletId");
+
+                    b.HasIndex("WalletId", "OrderDate");
 
                     b.ToTable("InvestmentOrders");
                 });
@@ -301,7 +313,48 @@ namespace SmartInvestingAPI.Migrations
 
                     b.HasIndex("AssetId");
 
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "AssetId");
+
                     b.ToTable("Portfolios");
+                });
+
+            modelBuilder.Entity("SmartInvestingAPI.Model.Domain.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeviceInfo")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("SmartInvestingAPI.Model.Domain.Transaction", b =>
@@ -347,7 +400,13 @@ namespace SmartInvestingAPI.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("TransactionDate");
+
                     b.HasIndex("WalletId");
+
+                    b.HasIndex("CategoryId", "TransactionDate");
+
+                    b.HasIndex("WalletId", "TransactionDate");
 
                     b.ToTable("Transactions");
                 });
@@ -384,6 +443,11 @@ namespace SmartInvestingAPI.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");

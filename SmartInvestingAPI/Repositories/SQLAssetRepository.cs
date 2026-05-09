@@ -33,12 +33,17 @@ namespace SmartInvestingAPI.Repositories
 
         public async Task<List<Asset>> GetAllAsync()
         {
-            return await dbContext.Assets.Where(a => a.IsActive).ToListAsync();
+            return await dbContext.Assets
+                .AsNoTracking()
+                .Where(a => a.IsActive)
+                .ToListAsync();
         }
 
         public async Task<Asset?> GetByIdAsync(int id)
         {
-            return await dbContext.Assets.FirstOrDefaultAsync(a => a.Id == id && a.IsActive);
+            return await dbContext.Assets
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == id && a.IsActive);
         }
 
         public async Task<Asset?> UpdateAsync(Asset asset)

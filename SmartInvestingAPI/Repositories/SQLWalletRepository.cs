@@ -37,16 +37,32 @@ namespace SmartInvestingAPI.Repositories
         public async Task<List<Wallet>> GetAllByUserIdAsync(Guid userId)
         {
             return await dbContext.Wallets
+                .AsNoTracking()
                 .Where(x => x.UserId == userId && x.IsActive == true)
                 .ToListAsync();
         }
 
+        public async Task<(List<Wallet> Wallets, int TotalCount)> GetAllByUserIdAsync(Guid userId, int pageNumber, int pageSize)
+        {
+            var query = dbContext.Wallets
+                .AsNoTracking()
+                .Where(x => x.UserId == userId && x.IsActive == true);
+
+            var totalCount = await query.CountAsync();
+            var wallets = await query
+                .OrderByDescending(w => w.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (wallets, totalCount);
+        }
+
         public async Task<Wallet?> GetByIdAsync(Guid id)
         {
-            var wallet = await dbContext.Wallets.FirstOrDefaultAsync(x => x.Id == id);
-            if (wallet == null)
-                return null;
-            return wallet;
+            return await dbContext.Wallets
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
         }
     }
 }

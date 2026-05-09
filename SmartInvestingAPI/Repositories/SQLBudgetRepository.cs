@@ -16,6 +16,7 @@ namespace SmartInvestingAPI.Repositories
         public async Task<List<Budget>> GetAllByUserIdAsync(Guid userId)
         {
             return await dbContext.Budgets
+                .AsNoTracking()
                 .Include(b => b.Category)
                 .Where(b => b.IsActive && b.UserId == userId)
                 .ToListAsync();
@@ -24,6 +25,7 @@ namespace SmartInvestingAPI.Repositories
         public async Task<List<Budget>> GetByUserMonthYearAsync(Guid userId, int month, int year)
         {
             return await dbContext.Budgets
+                .AsNoTracking()
                 .Include(b => b.Category)
                 .Where(b => b.IsActive && b.UserId == userId && b.Month == month && b.Year == year)
                 .ToListAsync();
@@ -32,6 +34,7 @@ namespace SmartInvestingAPI.Repositories
         public async Task<Budget?> GetByIdAndUserAsync(int id, Guid userId)
         {
             return await dbContext.Budgets
+                .AsNoTracking()
                 .Include(b => b.Category)
                 .FirstOrDefaultAsync(b => b.Id == id && b.UserId == userId && b.IsActive);
         }

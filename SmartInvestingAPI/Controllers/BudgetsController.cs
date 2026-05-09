@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartInvestingAPI.Model.Domain;
 using SmartInvestingAPI.Model.DTOs;
+using SmartInvestingAPI.Model.Wrappers;
 using SmartInvestingAPI.Repositories;
 
 namespace SmartInvestingAPI.Controllers
@@ -31,7 +32,7 @@ namespace SmartInvestingAPI.Controllers
         public async Task<IActionResult> GetAll()
         {
             var budgets = await budgetRepository.GetAllByUserIdAsync(CurrentUserId);
-            return Ok(mapper.Map<List<BudgetDto>>(budgets));
+            return Ok(ApiResponse<List<BudgetDto>>.Ok(mapper.Map<List<BudgetDto>>(budgets)));
         }
 
         [HttpGet("{id:int}")]
@@ -39,9 +40,9 @@ namespace SmartInvestingAPI.Controllers
         {
             var budget = await budgetRepository.GetByIdAndUserAsync(id, CurrentUserId);
             if (budget == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Budget not found"));
 
-            return Ok(mapper.Map<BudgetDto>(budget));
+            return Ok(ApiResponse<BudgetDto>.Ok(mapper.Map<BudgetDto>(budget)));
         }
 
         [HttpGet("{id:int}/summary")]
@@ -49,7 +50,7 @@ namespace SmartInvestingAPI.Controllers
         {
             var budget = await budgetRepository.GetByIdAndUserAsync(id, CurrentUserId);
             if (budget == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Budget not found"));
 
             var totalSpent = await transactionRepository.GetTotalSpentByUserForCategoryMonthAsync(
                 CurrentUserId,
@@ -63,14 +64,14 @@ namespace SmartInvestingAPI.Controllers
             summary.TotalSpent = totalSpent;
             summary.Remaining = remaining;
 
-            return Ok(summary);
+            return Ok(ApiResponse<BudgetSummaryDto>.Ok(summary));
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] AddBudgetRequestDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse.Fail("Invalid budget data"));
 
             var budget = mapper.Map<Budget>(request);
             budget.UserId = CurrentUserId;
@@ -80,27 +81,28 @@ namespace SmartInvestingAPI.Controllers
             var created = await budgetRepository.CreateAsync(budget);
             var reloaded = await budgetRepository.GetByIdAndUserAsync(created.Id, CurrentUserId);
             var dto = mapper.Map<BudgetDto>(reloaded ?? created);
-            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id },
+                ApiResponse<BudgetDto>.Created(dto));
         }
 
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateBudgetRequestDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse.Fail("Invalid budget data"));
 
             var existing = await budgetRepository.GetByIdAndUserAsync(id, CurrentUserId);
             if (existing == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Budget not found"));
 
             mapper.Map(request, existing);
 
             var updated = await budgetRepository.UpdateAsync(existing);
             if (updated == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Budget not found"));
 
             var withNav = await budgetRepository.GetByIdAndUserAsync(updated.Id, CurrentUserId);
-            return Ok(mapper.Map<BudgetDto>(withNav ?? updated));
+            return Ok(ApiResponse<BudgetDto>.Ok(mapper.Map<BudgetDto>(withNav ?? updated)));
         }
 
         [HttpDelete("{id:int}")]
@@ -108,9 +110,9 @@ namespace SmartInvestingAPI.Controllers
         {
             var deleted = await budgetRepository.DeleteAsync(id, CurrentUserId);
             if (deleted == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Budget not found"));
 
-            return Ok(mapper.Map<BudgetDto>(deleted));
+            return Ok(ApiResponse<BudgetDto>.Ok(mapper.Map<BudgetDto>(deleted), "Budget deleted successfully"));
         }
     }
 }

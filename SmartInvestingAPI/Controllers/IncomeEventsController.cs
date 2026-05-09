@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartInvestingAPI.Model.Domain;
 using SmartInvestingAPI.Model.DTOs;
+using SmartInvestingAPI.Model.Wrappers;
 using SmartInvestingAPI.Repositories;
 
 namespace SmartInvestingAPI.Controllers
@@ -29,7 +30,25 @@ namespace SmartInvestingAPI.Controllers
             this.mapper = mapper;
         }
 
-        // GET: /api/wallets/{walletId}/income-events
+        private Guid? GetUserIdOrFail()
+        {
+            var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Guid.TryParse(rawUserId, out var userId) ? userId : null;
+        }
+
+        private async Task<IActionResult> ValidateWalletOwnership(Guid walletId)
+        {
+            var userId = GetUserIdOrFail();
+            if (userId == null)
+                return Unauthorized(ApiResponse.Fail("Invalid user token"));
+
+            var wallet = await walletRepository.GetByIdAsync(walletId);
+            if (wallet == null || wallet.UserId != userId)
+                return NotFound(ApiResponse.Fail("Wallet not found"));
+
+            return null!;
+        }
+
         [HttpGet("/api/wallets/{walletId:Guid}/income-events")]
         public async Task<IActionResult> GetByWallet(
             [FromRoute] Guid walletId,
@@ -37,57 +56,42 @@ namespace SmartInvestingAPI.Controllers
             [FromQuery] DateTime? to,
             [FromQuery] IncomeEventType? type)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
-
-            var wallet = await walletRepository.GetByIdAsync(walletId);
-            if (wallet == null || wallet.UserId != userId)
-                return NotFound();
+            var validation = await ValidateWalletOwnership(walletId);
+            if (validation != null) return validation;
 
             var list = await incomeEventRepository.GetByWalletAsync(walletId, from, to, type);
-            return Ok(mapper.Map<List<IncomeEventDto>>(list));
+            return Ok(ApiResponse<List<IncomeEventDto>>.Ok(mapper.Map<List<IncomeEventDto>>(list)));
         }
 
-        // GET: /api/wallets/{walletId}/income-events/{id}
         [HttpGet("/api/wallets/{walletId:Guid}/income-events/{id:Guid}")]
         public async Task<IActionResult> GetById([FromRoute] Guid walletId, [FromRoute] Guid id)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
-
-            var wallet = await walletRepository.GetByIdAsync(walletId);
-            if (wallet == null || wallet.UserId != userId)
-                return NotFound();
+            var validation = await ValidateWalletOwnership(walletId);
+            if (validation != null) return validation;
 
             var entity = await incomeEventRepository.GetByIdAndWalletAsync(id, walletId);
             if (entity == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Income event not found"));
 
-            return Ok(mapper.Map<IncomeEventDto>(entity));
+            return Ok(ApiResponse<IncomeEventDto>.Ok(mapper.Map<IncomeEventDto>(entity)));
         }
 
-        // POST: /api/wallets/{walletId}/income-events
         [HttpPost("/api/wallets/{walletId:Guid}/income-events")]
         public async Task<IActionResult> Create([FromRoute] Guid walletId, [FromBody] AddIncomeEventRequestDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse.Fail("Invalid income event data"));
 
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            var validation = await ValidateWalletOwnership(walletId);
+            if (validation != null) return validation;
 
-            var wallet = await walletRepository.GetByIdAsync(walletId);
-            if (wallet == null || wallet.UserId != userId)
-                return NotFound();
+            var userId = GetUserIdOrFail()!.Value;
 
             if (request.AssetId.HasValue)
             {
                 var asset = await assetRepository.GetByIdAsync(request.AssetId.Value);
                 if (asset == null)
-                {
-                    ModelState.AddModelError(nameof(request.AssetId), "Asset does not exist.");
-                    return BadRequest(ModelState);
-                }
+                    return BadRequest(ApiResponse.Fail("Asset does not exist"));
             }
 
             var entity = new IncomeEvent
@@ -107,35 +111,28 @@ namespace SmartInvestingAPI.Controllers
             var created = await incomeEventRepository.CreateAsync(entity);
             var withNav = await incomeEventRepository.GetByIdAndWalletAsync(created.Id, walletId);
             var dto = withNav != null ? mapper.Map<IncomeEventDto>(withNav) : mapper.Map<IncomeEventDto>(created);
-            return CreatedAtAction(nameof(GetById), new { walletId, id = created.Id }, dto);
+            return CreatedAtAction(nameof(GetById), new { walletId, id = created.Id },
+                ApiResponse<IncomeEventDto>.Created(dto));
         }
 
-        // PUT: /api/wallets/{walletId}/income-events/{id}
         [HttpPut("/api/wallets/{walletId:Guid}/income-events/{id:Guid}")]
         public async Task<IActionResult> Update([FromRoute] Guid walletId, [FromRoute] Guid id, [FromBody] UpdateIncomeEventRequestDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse.Fail("Invalid income event data"));
 
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
-
-            var wallet = await walletRepository.GetByIdAsync(walletId);
-            if (wallet == null || wallet.UserId != userId)
-                return NotFound();
+            var validation = await ValidateWalletOwnership(walletId);
+            if (validation != null) return validation;
 
             var existing = await incomeEventRepository.GetByIdAndWalletAsync(id, walletId);
-            if (existing == null || existing.UserId != userId)
-                return NotFound();
+            if (existing == null || existing.UserId != GetUserIdOrFail())
+                return NotFound(ApiResponse.Fail("Income event not found"));
 
             if (request.AssetId.HasValue)
             {
                 var asset = await assetRepository.GetByIdAsync(request.AssetId.Value);
                 if (asset == null)
-                {
-                    ModelState.AddModelError(nameof(request.AssetId), "Asset does not exist.");
-                    return BadRequest(ModelState);
-                }
+                    return BadRequest(ApiResponse.Fail("Asset does not exist"));
             }
 
             existing.AssetId = request.AssetId;
@@ -146,29 +143,24 @@ namespace SmartInvestingAPI.Controllers
 
             var updated = await incomeEventRepository.UpdateAsync(existing);
             if (updated == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Income event not found"));
 
             var reloaded = await incomeEventRepository.GetByIdAndWalletAsync(id, walletId);
-            return Ok(mapper.Map<IncomeEventDto>(reloaded));
+            return Ok(ApiResponse<IncomeEventDto>.Ok(mapper.Map<IncomeEventDto>(reloaded)));
         }
 
-        // DELETE: /api/wallets/{walletId}/income-events/{id}
         [HttpDelete("/api/wallets/{walletId:Guid}/income-events/{id:Guid}")]
         public async Task<IActionResult> Delete([FromRoute] Guid walletId, [FromRoute] Guid id)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
-
-            var wallet = await walletRepository.GetByIdAsync(walletId);
-            if (wallet == null || wallet.UserId != userId)
-                return NotFound();
+            var validation = await ValidateWalletOwnership(walletId);
+            if (validation != null) return validation;
 
             var existing = await incomeEventRepository.GetByIdAndWalletAsync(id, walletId);
-            if (existing == null || existing.UserId != userId)
-                return NotFound();
+            if (existing == null || existing.UserId != GetUserIdOrFail())
+                return NotFound(ApiResponse.Fail("Income event not found"));
 
             await incomeEventRepository.SoftDeleteAsync(id, walletId);
-            return NoContent();
+            return Ok(ApiResponse.Ok("Income event deleted successfully"));
         }
     }
 }

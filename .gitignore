@@ -69,13 +69,19 @@ yarn-error.log*
 SmartInvestingUI/ios/
 SmartInvestingUI/android/
 
-# Env local (frontend)
+# Env local (backend .NET)
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env*.local
+.env.*.local
+.env.example
+
+# Env local (frontend)
+SmartInvestingUI/.env
+SmartInvestingUI/.env.local
+SmartInvestingUI/.env.development.local
+SmartInvestingUI/.env.test.local
+SmartInvestingUI/.env.production.local
+SmartInvestingUI/.env*.local
 
 # ---------- OS ----------
 .DS_Store

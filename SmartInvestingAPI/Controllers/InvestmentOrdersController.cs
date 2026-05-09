@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartInvestingAPI.Model.Domain;
 using SmartInvestingAPI.Model.DTOs;
+using SmartInvestingAPI.Model.Wrappers;
 using SmartInvestingAPI.Repositories;
 using SmartInvestingAPI.Services;
 
@@ -28,15 +29,21 @@ namespace SmartInvestingAPI.Controllers
             this.mapper = mapper;
         }
 
-        //POST: /api/investment-orders
+        private Guid? GetUserIdOrFail()
+        {
+            var rawUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Guid.TryParse(rawUserId, out var userId) ? userId : null;
+        }
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] AddInvestmentOrderRequestDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(ApiResponse.Fail("Invalid order data"));
 
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            var userId = GetUserIdOrFail();
+            if (userId == null)
+                return Unauthorized(ApiResponse.Fail("Invalid user token"));
 
             try
             {
@@ -44,7 +51,7 @@ namespace SmartInvestingAPI.Controllers
                 if (request.OrderType == OrderType.Buy)
                 {
                     order = await investmentOrderService.BuyAsync(
-                        userId,
+                        userId.Value,
                         request.WalletId,
                         request.AssetId,
                         request.Quantity,
@@ -55,7 +62,7 @@ namespace SmartInvestingAPI.Controllers
                 else
                 {
                     order = await investmentOrderService.SellAsync(
-                        userId,
+                        userId.Value,
                         request.WalletId,
                         request.AssetId,
                         request.Quantity,
@@ -64,42 +71,43 @@ namespace SmartInvestingAPI.Controllers
                         request.OrderDate);
                 }
 
-                var created = await investmentOrderRepository.GetByIdAsync(order.Id, userId);
+                var created = await investmentOrderRepository.GetByIdAsync(order.Id, userId.Value);
                 if (created == null)
-                    return Problem("Order created but cannot be loaded.", statusCode: StatusCodes.Status500InternalServerError);
+                    return Problem(detail: "Order created but cannot be loaded.", statusCode: StatusCodes.Status500InternalServerError);
 
                 var dto = mapper.Map<InvestmentOrderDto>(created);
-                return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+                return CreatedAtAction(nameof(GetById), new { id = dto.Id },
+                    ApiResponse<InvestmentOrderDto>.Created(dto, "Order placed successfully"));
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(ApiResponse.Fail(ex.Message));
             }
         }
 
-        //GET: /api/investment-orders
         [HttpGet]
         public async Task<IActionResult> GetAllHistoryInvestmentOrder()
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            var userId = GetUserIdOrFail();
+            if (userId == null)
+                return Unauthorized(ApiResponse.Fail("Invalid user token"));
 
-            var orders = await investmentOrderRepository.GetAllByUserAsync(userId);
-            return Ok(mapper.Map<List<InvestmentOrderDto>>(orders));
+            var orders = await investmentOrderRepository.GetAllByUserAsync(userId.Value);
+            return Ok(ApiResponse<List<InvestmentOrderDto>>.Ok(mapper.Map<List<InvestmentOrderDto>>(orders)));
         }
 
-        //GET: /api/investment-orders/{id}
         [HttpGet("{id:Guid}")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            var userId = GetUserIdOrFail();
+            if (userId == null)
+                return Unauthorized(ApiResponse.Fail("Invalid user token"));
 
-            var order = await investmentOrderRepository.GetByIdAsync(id, userId);
+            var order = await investmentOrderRepository.GetByIdAsync(id, userId.Value);
             if (order == null)
-                return NotFound();
+                return NotFound(ApiResponse.Fail("Order not found"));
 
-            return Ok(mapper.Map<InvestmentOrderDto>(order));
+            return Ok(ApiResponse<InvestmentOrderDto>.Ok(mapper.Map<InvestmentOrderDto>(order)));
         }
     }
 }

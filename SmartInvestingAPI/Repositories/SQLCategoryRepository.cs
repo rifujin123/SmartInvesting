@@ -16,13 +16,16 @@ namespace SmartInvestingAPI.Repositories
         public async Task<List<Category>> GetAllAsync()
         {
             return await dbContext.Categories
+                .AsNoTracking()
                 .Where(c => c.IsActive)
                 .ToListAsync();
         }
 
         public async Task<Category?> GetByIdAsync(int id)
         {
-            return await dbContext.Categories.FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
+            return await dbContext.Categories
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
         }
 
         public async Task<Category> CreateAsync(Category category)

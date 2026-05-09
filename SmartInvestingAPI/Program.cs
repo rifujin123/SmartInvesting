@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SmartInvestingAPI.Database;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -7,11 +8,34 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi.Models;
 using SmartInvestingAPI.Repositories;
 using SmartInvestingAPI.Services;
+using SmartInvestingAPI.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Load .env.local file for development (load before other config sources)
+DotNetEnv.Env.Load(".env.local");
 
+// Load secrets: User Secrets (dev) → Environment Variables → Config file
+// if (builder.Environment.IsDevelopment())
+// {
+//     builder.Configuration.AddUserSecrets<Program>();
+// }
+// Note: .env.local is loaded via DotNetEnv above, not via UserSecrets
+
+var connectionString = GetRequiredEnvOrConfig(builder, "ConnectionStrings:DefaultConnection", "SQL_CONNECTION_STRING");
+var authConnectionString = GetRequiredEnvOrConfig(builder, "ConnectionStrings:AuthConnection", "SQL_AUTH_CONNECTION_STRING");
+var jwtKey = GetRequiredEnvOrConfig(builder, "Jwt:Key", "JWT_SECRET_KEY");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SmartInvestingAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SmartInvestingAPI";
+var jwtDurationMinutes = builder.Configuration.GetValue<int>("Jwt:DurationInMinutes", 60);
+
+var fireAntUsername = GetRequiredEnvOrConfig(builder, "FireAnt:Username", "FIREANT_USERNAME");
+var fireAntPassword = GetRequiredEnvOrConfig(builder, "FireAnt:Password", "FIREANT_PASSWORD");
+var fireAntSkipSsl = builder.Configuration.GetValue<bool>("FireAnt:SkipSslValidation", false);
+
+var skipSslForDev = builder.Environment.IsDevelopment() && fireAntSkipSsl;
+
+// Add services to the container.
 builder.Services.AddControllers();
 
 var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>();
@@ -21,11 +45,12 @@ builder.Services.AddCors(options =>
     {
         if (corsOrigins.Length > 0)
             policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
-        else
+        else if (builder.Environment.IsDevelopment())
             policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        else
+            policy.SetIsOriginAllowed(_ => false);
     });
 });
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -58,15 +83,16 @@ builder.Services.AddSwaggerGen(options =>
 
 //DI dbcontext
 builder.Services.AddDbContext<AppDbcontext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
 builder.Services.AddDbContext<AppIdentityDbcontext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AuthConnection")));
+    options.UseSqlServer(authConnectionString));
 
 //automapper
 builder.Services.AddAutoMapper(cfg => { }, typeof(Program).Assembly);
 
 //Repositories
 builder.Services.AddScoped<ITokenRepository, TokenRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, SQLRefreshTokenRepository>();
 builder.Services.AddScoped<IWalletRepository, SQLWalletRepository>();
 builder.Services.AddScoped<ITransactionRepository, SQLTransactionRepository>();
 builder.Services.AddScoped<ICategoryRepository, SQLCategoryRepository>();
@@ -77,13 +103,14 @@ builder.Services.AddScoped<IInvestmentOrderRepository, SQLInvestmentOrderReposit
 builder.Services.AddScoped<IIncomeEventRepository, SQLIncomeEventRepository>();
 builder.Services.AddScoped<IInvestmentOrderService, InvestmentOrderService>();
 
-// FireAnt market price
+// FireAnt market price - SSL validation only skipped in dev with explicit flag
 builder.Services.AddHttpClient<FireAntAuthService>()
     .ConfigurePrimaryHttpMessageHandler(() =>
     {
         var handler = new HttpClientHandler();
-        if (builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("FireAnt:SkipSslValidation"))
+        if (skipSslForDev)
         {
+            Console.WriteLine("WARNING: SSL certificate validation is DISABLED for FireAnt API (Development only)");
             handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
         }
         return handler;
@@ -93,7 +120,7 @@ builder.Services.AddHttpClient<FireAntService>()
     .ConfigurePrimaryHttpMessageHandler(() =>
     {
         var handler = new HttpClientHandler();
-        if (builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("FireAnt:SkipSslValidation"))
+        if (skipSslForDev)
         {
             handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
         }
@@ -115,7 +142,7 @@ else
 
 builder.Services.AddScoped<IMarketPriceService, MarketPriceService>();
 
-//Authentication 
+//Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -131,17 +158,20 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 });
 
-//Identity Configuration 
+//Identity Configuration
 builder.Services.AddIdentityCore<IdentityUser<Guid>>()
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppIdentityDbcontext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddSignInManager<SignInManager<IdentityUser<Guid>>>();
+
+builder.Services.AddScoped<SignInManager<IdentityUser<Guid>>>();
 
 builder.Services.AddAuthorization(options =>
 {
@@ -149,6 +179,12 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("UserOnly", policy => policy.RequireRole("User"));
     options.AddPolicy("PremiumUser", policy => policy.RequireRole("Premium"));
 });
+
+//Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy())
+    .AddDbContextCheck<AppDbcontext>("database")
+    .AddDbContextCheck<AppIdentityDbcontext>("identity_database");
 
 var app = builder.Build();
 
@@ -159,7 +195,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseGlobalExceptionHandler();  // Must be first to catch all exceptions
+app.UseRequestLogging();          // Log all requests
+app.UseRateLimiting();            // Rate limiting for auth endpoints
+
 app.UseHttpsRedirection();
+
+app.UseSecurityHeaders();
 
 app.UseCors();
 
@@ -176,3 +218,21 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+/// <summary>
+/// Helper function to load required secrets from environment variables or config
+/// </summary>
+static string GetRequiredEnvOrConfig(WebApplicationBuilder builder, string configPath, string envVarName)
+{
+    var value = Environment.GetEnvironmentVariable(envVarName)
+        ?? builder.Configuration[configPath];
+
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        throw new InvalidOperationException(
+            $"Required configuration '{configPath}' is missing. " +
+            $"Set the '{envVarName}' environment variable or add the value to your secrets provider.");
+    }
+
+    return value;
+}

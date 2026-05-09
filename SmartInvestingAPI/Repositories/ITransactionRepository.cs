@@ -6,6 +6,7 @@ namespace SmartInvestingAPI.Repositories
     {
         Task<List<Transaction>> GetAllAsync();
         Task<List<Transaction>> GetTransactionsByWalletIdAsync(Guid walletId);
+        Task<(List<Transaction> Transactions, int TotalCount)> GetTransactionsByWalletIdAsync(Guid walletId, int pageNumber, int pageSize);
         Task<Transaction?> GetByIdAsync(Guid transactionId);
         Task<Transaction?> GetTransactionByIdAndWalletIdAsync(Guid transactionId, Guid walletId);
         Task<Transaction> CreateAsync(Transaction transaction);
@@ -14,6 +15,8 @@ namespace SmartInvestingAPI.Repositories
         Task<decimal> GetTotalSpentAsync(int categoryId, int month, int year);
         /// <summary>Tổng chi (Expense) theo user, category và tháng — dùng cho ngân sách.</summary>
         Task<decimal> GetTotalSpentByUserForCategoryMonthAsync(Guid userId, int categoryId, int month, int year);
+        /// <summary>Tổng chi theo user, nhiều categories và tháng — batch query để tránh N+1.</summary>
+        Task<Dictionary<int, decimal>> GetTotalSpentByUserForCategoriesMonthAsync(Guid userId, IEnumerable<int> categoryIds, int month, int year);
         Task<decimal> GetTotalExpenseByUserForMonthAsync(Guid userId, int month, int year);
     }
 }

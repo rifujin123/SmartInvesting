@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SmartInvestingAPI.Model.DTOs;
+using SmartInvestingAPI.Model.Wrappers;
 using SmartInvestingAPI.Repositories;
 
 namespace SmartInvestingAPI.Controllers
@@ -10,20 +12,43 @@ namespace SmartInvestingAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<IdentityUser<Guid>> userManager;
+        private readonly SignInManager<IdentityUser<Guid>> signInManager;
         private readonly RoleManager<IdentityRole<Guid>> roleManager;
         private readonly ITokenRepository tokenRepository;
+        private readonly IRefreshTokenRepository refreshTokenRepository;
 
-        public AuthController(UserManager<IdentityUser<Guid>> userManager,RoleManager<IdentityRole<Guid>> roleManager,ITokenRepository tokenRepository)
+        public AuthController(
+            UserManager<IdentityUser<Guid>> userManager,
+            SignInManager<IdentityUser<Guid>> signInManager,
+            RoleManager<IdentityRole<Guid>> roleManager,
+            ITokenRepository tokenRepository,
+            IRefreshTokenRepository refreshTokenRepository)
         {
             this.userManager = userManager;
+            this.signInManager = signInManager;
             this.roleManager = roleManager;
             this.tokenRepository = tokenRepository;
+            this.refreshTokenRepository = refreshTokenRepository;
         }
 
-        // POST: api/auth/register
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto request)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ApiResponse.Fail(GetModelStateErrors()));
+
+            var existingUser = await userManager.FindByEmailAsync(request.Email);
+            if (existingUser != null)
+            {
+                return BadRequest(ApiResponse.Fail("Email already registered"));
+            }
+
+            var existingUsername = await userManager.FindByNameAsync(request.Username);
+            if (existingUsername != null)
+            {
+                return BadRequest(ApiResponse.Fail("Username already taken"));
+            }
+
             var user = new IdentityUser<Guid>
             {
                 Email = request.Email,
@@ -33,7 +58,10 @@ namespace SmartInvestingAPI.Controllers
             var result = await userManager.CreateAsync(user, request.Password);
 
             if (!result.Succeeded)
-                return BadRequest(result.Errors);
+            {
+                var errors = result.Errors.Select(e => e.Description).ToList();
+                return BadRequest(ApiResponse<object>.Fail(errors));
+            }
 
             const string defaultRole = "User";
             if (!await roleManager.RoleExistsAsync(defaultRole))
@@ -43,27 +71,98 @@ namespace SmartInvestingAPI.Controllers
 
             await userManager.AddToRoleAsync(user, defaultRole);
 
-            return Ok("Đăng ký thành công!");
+            return Ok(ApiResponse<object>.Ok(new { userId = user.Id, email = user.Email }, "Registration successful"));
         }
 
-        // POST: api/auth/login
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto request)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ApiResponse.Fail(GetModelStateErrors()));
+
             var user = await userManager.FindByNameAsync(request.Username);
-
             if (user == null)
-                return Unauthorized("Username hoặc Password không đúng.");
+                return Unauthorized(ApiResponse.Fail("Invalid username or password"));
 
-            var isPasswordValid = await userManager.CheckPasswordAsync(user, request.Password);
+            var result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
 
-            if (!isPasswordValid)
-                return Unauthorized("Username hoặc Password không đúng.");
+            if (result.IsLockedOut)
+                return Unauthorized(ApiResponse.Fail("Account is locked out. Please try again later."));
+
+            if (!result.Succeeded)
+                return Unauthorized(ApiResponse.Fail("Invalid username or password"));
 
             var roles = await userManager.GetRolesAsync(user);
-            var jwtToken = tokenRepository.CreateToken(user, roles.ToList());
+            var (token, expiresAt) = tokenRepository.CreateToken(user, roles.ToList());
 
-            return Ok(new { token = jwtToken });
+            // Create refresh token
+            var deviceInfo = Request.Headers["User-Agent"].FirstOrDefault();
+            var refreshToken = tokenRepository.CreateRefreshToken(user.Id, deviceInfo);
+            await refreshTokenRepository.CreateAsync(refreshToken);
+
+            return Ok(ApiResponse<TokenResponseDto>.Ok(new TokenResponseDto
+            {
+                Token = token,
+                RefreshToken = refreshToken.Token,
+                ExpiresAt = expiresAt,
+                ExpiresInSeconds = (int)(expiresAt - DateTime.UtcNow).TotalSeconds
+            }));
+        }
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ApiResponse.Fail(GetModelStateErrors()));
+
+            var storedToken = await refreshTokenRepository.GetByTokenAsync(request.RefreshToken);
+            if (storedToken == null || !storedToken.IsActive)
+                return Unauthorized(ApiResponse.Fail("Invalid or expired refresh token."));
+
+            var user = await userManager.FindByIdAsync(storedToken.UserId.ToString());
+            if (user == null)
+                return Unauthorized(ApiResponse.Fail("User not found."));
+
+            // Revoke old refresh token (rotation)
+            await refreshTokenRepository.RevokeAsync(request.RefreshToken);
+
+            // Generate new tokens
+            var roles = await userManager.GetRolesAsync(user);
+            var (newToken, expiresAt) = tokenRepository.CreateToken(user, roles.ToList());
+
+            // Create new refresh token
+            var deviceInfo = Request.Headers["User-Agent"].FirstOrDefault();
+            var newRefreshToken = tokenRepository.CreateRefreshToken(user.Id, deviceInfo);
+            await refreshTokenRepository.CreateAsync(newRefreshToken);
+
+            return Ok(ApiResponse<TokenResponseDto>.Ok(new TokenResponseDto
+            {
+                Token = newToken,
+                RefreshToken = newRefreshToken.Token,
+                ExpiresAt = expiresAt,
+                ExpiresInSeconds = (int)(expiresAt - DateTime.UtcNow).TotalSeconds
+            }));
+        }
+
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto? request)
+        {
+            if (request != null && !string.IsNullOrEmpty(request.RefreshToken))
+            {
+                await refreshTokenRepository.RevokeAsync(request.RefreshToken);
+            }
+
+            return Ok(ApiResponse.Ok("Logged out successfully."));
+        }
+
+        private string GetModelStateErrors()
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+            return string.Join("; ", errors);
         }
     }
 }
