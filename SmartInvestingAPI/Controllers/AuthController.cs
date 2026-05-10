@@ -80,9 +80,9 @@ namespace SmartInvestingAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ApiResponse.Fail(GetModelStateErrors()));
 
-            var user = await userManager.FindByNameAsync(request.Username);
+            var user = await userManager.FindByEmailAsync(request.Email);
             if (user == null)
-                return Unauthorized(ApiResponse.Fail("Invalid username or password"));
+                return Unauthorized(ApiResponse.Fail("Invalid email or password"));
 
             var result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
 
@@ -90,7 +90,7 @@ namespace SmartInvestingAPI.Controllers
                 return Unauthorized(ApiResponse.Fail("Account is locked out. Please try again later."));
 
             if (!result.Succeeded)
-                return Unauthorized(ApiResponse.Fail("Invalid username or password"));
+                return Unauthorized(ApiResponse.Fail("Invalid email or password"));
 
             var roles = await userManager.GetRolesAsync(user);
             var (token, expiresAt) = tokenRepository.CreateToken(user, roles.ToList());

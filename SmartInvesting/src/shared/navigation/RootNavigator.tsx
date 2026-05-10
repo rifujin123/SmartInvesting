@@ -10,6 +10,8 @@ import { FinanceScreen } from "../../features/finance/screens/FinanceScreen";
 import { PortfolioScreen } from "../../features/portfolio/screens/PortfolioScreen";
 import { TransactionsScreen } from "../../features/transactions/screens/TransactionsScreen";
 import { BottomTabs, TabName } from "../components/BottomTabs";
+import { useAuth } from "../../context/AuthContext";
+import { LoginRequest, RegisterRequest } from "../../services/auth/types";
 
 const SCREEN_BG = "#FFFFFF";
 
@@ -60,12 +62,13 @@ const AnimatedScreen: React.FC<{
 export const RootNavigator: React.FC<RootNavigatorProps> = ({
   initialOnboarding = true,
 }) => {
+  const { status, login, register, logout, isSubmitting, error, clearError } = useAuth();
   const [authScreen, setAuthScreen] = useState<AuthScreen>("splash");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState<TabName>("dashboard");
+  const [registerSuccessMessage, setRegisterSuccessMessage] = useState<string | null>(null);
 
   const handleSplashFinish = () => {
-    if (!initialOnboarding) {
+    if (initialOnboarding) {
       setAuthScreen("onboarding");
     } else {
       setAuthScreen("login");
@@ -76,27 +79,35 @@ export const RootNavigator: React.FC<RootNavigatorProps> = ({
     setAuthScreen("login");
   };
 
-  const handleLogin = () => {
-    setIsLoggedIn(true);
+  const handleLogin = async (payload: LoginRequest) => {
+    setRegisterSuccessMessage(null);
+    await login(payload);
   };
 
-  const handleRegister = () => {
-    setIsLoggedIn(true);
+  const handleRegister = async (payload: RegisterRequest) => {
+    await register(payload);
+    setRegisterSuccessMessage("Registration successful. Please sign in.");
+    setAuthScreen("login");
   };
 
   const handleLoginPress = () => {
+    clearError();
+    setRegisterSuccessMessage(null);
     setAuthScreen("register");
   };
 
   const handleRegisterPress = () => {
+    clearError();
     setAuthScreen("login");
   };
 
   const handleForgotPasswordPress = () => {
+    clearError();
     setAuthScreen("forgot-password");
   };
 
   const handleForgotPasswordBack = () => {
+    clearError();
     setAuthScreen("login");
   };
 
@@ -104,11 +115,14 @@ export const RootNavigator: React.FC<RootNavigatorProps> = ({
     setAuthScreen("login");
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
+  const handleLogout = async () => {
+    await logout();
+    setRegisterSuccessMessage(null);
     setAuthScreen("login");
     setActiveTab("dashboard");
   };
+
+  const loginMessage = error ?? registerSuccessMessage;
 
   const renderAuthScreen = () => {
     switch (authScreen) {
@@ -131,6 +145,9 @@ export const RootNavigator: React.FC<RootNavigatorProps> = ({
               onLogin={handleLogin}
               onRegisterPress={handleLoginPress}
               onForgotPasswordPress={handleForgotPasswordPress}
+              isSubmitting={isSubmitting}
+              serverError={loginMessage}
+              clearServerError={clearError}
             />
           </AnimatedScreen>
         );
@@ -140,6 +157,9 @@ export const RootNavigator: React.FC<RootNavigatorProps> = ({
             <RegisterScreen
               onRegister={handleRegister}
               onLoginPress={handleRegisterPress}
+              isSubmitting={isSubmitting}
+              serverError={error}
+              clearServerError={clearError}
             />
           </AnimatedScreen>
         );
@@ -168,9 +188,13 @@ export const RootNavigator: React.FC<RootNavigatorProps> = ({
     }
   };
 
+  if (status === "booting") {
+    return <View style={styles.container} />;
+  }
+
   return (
     <View style={styles.container}>
-      {!isLoggedIn ? (
+      {status !== "authenticated" ? (
         renderAuthScreen()
       ) : (
         <View style={styles.mainContainer}>

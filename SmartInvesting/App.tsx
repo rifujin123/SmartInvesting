@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RootNavigator } from "./src/shared/navigation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AuthProvider } from "./src/context/AuthContext";
 
 const ONBOARDING_KEY = "@smartinvesting_onboarding_completed";
 
@@ -30,8 +31,10 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      <RootNavigator initialOnboarding={showOnboarding} />
+      <AuthProvider>
+        <StatusBar style="light" />
+        <RootNavigator initialOnboarding={showOnboarding} />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

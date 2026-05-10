@@ -8,12 +8,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
+import { LoginRequest } from "../../../services/auth/types";
 
 interface LoginScreenProps {
-  onLogin: () => void;
+  onLogin: (payload: LoginRequest) => void | Promise<void>;
   onRegisterPress: () => void;
   onForgotPasswordPress: () => void;
+  isSubmitting?: boolean;
+  serverError?: string | null;
+  clearServerError?: () => void;
 }
 
 interface FormErrors {
@@ -25,6 +30,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onLogin,
   onRegisterPress,
   onForgotPasswordPress,
+  isSubmitting = false,
+  serverError = null,
+  clearServerError,
 }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -65,7 +73,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
 
@@ -73,7 +81,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setTouched({ email: true, password: true });
 
     if (!emailError && !passwordError) {
-      onLogin();
+      await onLogin({ email: email.trim(), password });
     }
   };
 
@@ -104,6 +112,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
+                clearServerError?.();
                 if (touched.email) {
                   setErrors((prev) => ({ ...prev, email: validateEmail(text) }));
                 }
@@ -132,6 +141,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
+                  clearServerError?.();
                   if (touched.password) {
                     setErrors((prev) => ({
                       ...prev,
@@ -158,16 +168,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             )}
           </View>
 
+          {serverError ? <Text style={styles.serverErrorText}>{serverError}</Text> : null}
+
           <TouchableOpacity style={styles.forgotPasswordContainer} onPress={onForgotPasswordPress} activeOpacity={0.7}>
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.loginButton}
-            onPress={handleLogin}
+            style={[styles.loginButton, isSubmitting && styles.loginButtonDisabled]}
+            onPress={() => {
+              void handleLogin();
+            }}
             activeOpacity={0.85}
+            disabled={isSubmitting}
           >
-            <Text style={styles.loginButtonText}>Sign In</Text>
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.loginButtonText}>Sign In</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -256,6 +275,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#0836e6",
   },
+  serverErrorText: {
+    fontSize: 13,
+    color: "#DC2626",
+    marginBottom: 16,
+  },
   forgotPasswordContainer: {
     alignSelf: "flex-end",
     marginBottom: 24,
@@ -281,6 +305,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
     letterSpacing: 0.3,
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
   },
   footer: {
     flexDirection: "row",

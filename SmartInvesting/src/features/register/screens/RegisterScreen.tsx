@@ -8,11 +8,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
+import { RegisterRequest } from "../../../services/auth/types";
 
 interface RegisterScreenProps {
-  onRegister: () => void;
+  onRegister: (payload: RegisterRequest) => void | Promise<void>;
   onLoginPress: () => void;
+  isSubmitting?: boolean;
+  serverError?: string | null;
+  clearServerError?: () => void;
 }
 
 interface FormErrors {
@@ -25,6 +30,9 @@ interface FormErrors {
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   onRegister,
   onLoginPress,
+  isSubmitting = false,
+  serverError = null,
+  clearServerError,
 }) => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -113,7 +121,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     const usernameError = validateUsername(username);
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
@@ -128,7 +136,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     setTouched({ username: true, email: true, password: true, confirmPassword: true });
 
     if (!usernameError && !emailError && !passwordError && !confirmPasswordError) {
-      onRegister();
+      await onRegister({ username: username.trim(), email: email.trim(), password });
     }
   };
 
@@ -181,6 +189,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               value={username}
               onChangeText={(text) => {
                 setUsername(text);
+                clearServerError?.();
                 if (touched.username) {
                   setErrors((prev) => ({ ...prev, username: validateUsername(text) }));
                 }
@@ -206,6 +215,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
+                clearServerError?.();
                 if (touched.email) {
                   setErrors((prev) => ({ ...prev, email: validateEmail(text) }));
                 }
@@ -234,6 +244,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
+                  clearServerError?.();
                   if (touched.password) {
                     setErrors((prev) => ({ ...prev, password: validatePassword(text) }));
                   }
@@ -298,6 +309,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 value={confirmPassword}
                 onChangeText={(text) => {
                   setConfirmPassword(text);
+                  clearServerError?.();
                   if (touched.confirmPassword) {
                     setErrors((prev) => ({
                       ...prev,
@@ -324,12 +336,21 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             )}
           </View>
 
+          {serverError ? <Text style={styles.serverErrorText}>{serverError}</Text> : null}
+
           <TouchableOpacity
-            style={styles.registerButton}
-            onPress={handleRegister}
+            style={[styles.registerButton, isSubmitting && styles.registerButtonDisabled]}
+            onPress={() => {
+              void handleRegister();
+            }}
             activeOpacity={0.85}
+            disabled={isSubmitting}
           >
-            <Text style={styles.registerButtonText}>Create Account</Text>
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.registerButtonText}>Create Account</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -437,6 +458,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
   },
+  serverErrorText: {
+    fontSize: 13,
+    color: "#DC2626",
+    marginTop: 8,
+    marginBottom: 8,
+  },
   registerButton: {
     backgroundColor: "#0836e6",
     borderRadius: 12,
@@ -449,11 +476,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  registerButtonText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#FFFFFF",
-    letterSpacing: 0.3,
+  registerButtonDisabled: {
+    opacity: 0.7,
   },
   footer: {
     flexDirection: "row",
