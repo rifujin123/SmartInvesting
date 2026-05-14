@@ -2,7 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using SmartInvestingAPI.Model.Domain;
 
@@ -17,7 +16,7 @@ namespace SmartInvestingAPI.Repositories
             this.configuration = configuration;
         }
 
-        public (string Token, DateTime ExpiresAt) CreateToken(IdentityUser<Guid> user, List<string> roles)
+        public (string Token, DateTime ExpiresAt) CreateToken(User user, List<string> roles)
         {
             var claims = new List<Claim>
             {

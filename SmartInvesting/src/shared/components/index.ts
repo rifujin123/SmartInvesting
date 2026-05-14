@@ -1,1 +1,2 @@
-export { BottomTabs, type TabName } from "./BottomTabs";
+export { BottomTabs } from "./BottomTabs";
+export { AppHeader } from "./AppHeader";

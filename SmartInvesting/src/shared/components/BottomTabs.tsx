@@ -7,7 +7,10 @@ import {
   Platform,
   Dimensions,
 } from "react-native";
+import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { AppTabParamList } from "../navigation/types";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -20,55 +23,60 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
-export type TabName = "dashboard" | "finance" | "portfolio" | "transactions";
+type TabRouteName = keyof AppTabParamList;
+
+type TabIconName = keyof typeof Ionicons.glyphMap;
 
 interface TabItem {
-  name: TabName;
+  name: TabRouteName;
   label: string;
-  icon: string;
-  activeIcon: string;
+  icon: TabIconName;
+  activeIcon: TabIconName;
 }
 
-const TABS: TabItem[] = [
-  {
-    name: "dashboard",
+const TAB_ITEMS: Record<TabRouteName, TabItem> = {
+  Dashboard: {
+    name: "Dashboard",
     label: "Home",
     icon: "home-outline",
     activeIcon: "home",
   },
-  {
-    name: "finance",
+  Finance: {
+    name: "Finance",
     label: "Finance",
     icon: "trending-up-outline",
     activeIcon: "trending-up",
   },
-  {
-    name: "portfolio",
+  Portfolio: {
+    name: "Portfolio",
     label: "Portfolio",
     icon: "briefcase-outline",
     activeIcon: "briefcase",
   },
-  {
-    name: "transactions",
+  Transactions: {
+    name: "Transactions",
     label: "Activity",
     icon: "time-outline",
     activeIcon: "time",
   },
-];
+};
 
 const ACTIVE_COLOR = "#0836e6";
 const INACTIVE_COLOR = "#94A3B8";
 
-interface BottomTabsProps {
-  activeTab: TabName;
-  onTabPress: (tab: TabName) => void;
+interface TabItemComponentProps {
+  tab: TabItem;
+  isActive: boolean;
+  onPress: (name: TabRouteName) => void;
+  onLongPress: (name: TabRouteName) => void;
 }
 
+const TAB_COUNT = Object.keys(TAB_ITEMS).length;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const TABBAR_WIDTH = SCREEN_WIDTH - 32;
-const TAB_WIDTH = TABBAR_WIDTH / TABS.length;
-const GOOEY_WIDTH = 64;
-const GOOEY_HEIGHT = 44;
+const TAB_WIDTH = TABBAR_WIDTH / TAB_COUNT;
+const GOOEY_WIDTH = 72;
+const GOOEY_HEIGHT = 50;
 
 const SPRING_CONFIG = {
   damping: 15,
@@ -91,18 +99,11 @@ const triggerHaptic = () => {
   scheduleOnRN(jsTriggerHaptic);
 };
 
-interface TabItemComponentProps {
-  tab: TabItem;
-  index: number;
-  isActive: boolean;
-  onPress: (name: TabName) => void;
-}
-
 const TabItemComponent: React.FC<TabItemComponentProps> = ({
   tab,
-  index,
   isActive,
   onPress,
+  onLongPress,
 }) => {
   const pressScale = useSharedValue(1);
   const iconBounce = useSharedValue(0);
@@ -127,6 +128,10 @@ const TabItemComponent: React.FC<TabItemComponentProps> = ({
     onPress(tab.name);
   }, [onPress, tab.name]);
 
+  const handleLongPress = useCallback(() => {
+    onLongPress(tab.name);
+  }, [onLongPress, tab.name]);
+
   const containerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],
   }));
@@ -142,11 +147,12 @@ const TabItemComponent: React.FC<TabItemComponentProps> = ({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
+      onLongPress={handleLongPress}
     >
       <Animated.View style={[styles.tabContent, containerStyle]}>
         <Animated.View style={iconContainerStyle}>
           <Ionicons
-            name={(isActive ? tab.activeIcon : tab.icon) as any}
+            name={isActive ? tab.activeIcon : tab.icon}
             size={26}
             color={isActive ? ACTIVE_COLOR : INACTIVE_COLOR}
           />
@@ -175,14 +181,16 @@ const GooeyIndicator: React.FC<GooeyIndicatorProps> = ({ activeIndex }) => {
   React.useEffect(() => {
     stretch.value = withTiming(
       1.2,
-      { duration: 120, easing: Easing.out(Easing.cubic) },
+      { duration: 220, easing: Easing.out(Easing.cubic) },
       () => {
-        stretch.value = withSpring(1, { ...SPRING_CONFIG, damping: 18 });
+        stretch.value = withSpring(1, { ...SPRING_CONFIG, damping: 20, stiffness: 135 });
       },
     );
     position.value = withSpring(activeIndex, {
       ...SPRING_CONFIG,
-      stiffness: 180,
+      damping: 18,
+      stiffness: 135,
+      mass: 0.9,
     });
   }, [activeIndex, position, stretch]);
 
@@ -201,23 +209,109 @@ const GooeyIndicator: React.FC<GooeyIndicatorProps> = ({ activeIndex }) => {
   return <Animated.View style={[styles.gooeyIndicator, indicatorStyle]} />;
 };
 
-export const BottomTabs: React.FC<BottomTabsProps> = ({
-  activeTab,
-  onTabPress,
+const LiquidGlassPill: React.FC<{ activeIndex: number }> = ({ activeIndex }) => {
+  const position = useSharedValue(activeIndex);
+  const stretch = useSharedValue(1);
+
+  React.useEffect(() => {
+    stretch.value = withTiming(
+      1.16,
+      { duration: 220, easing: Easing.out(Easing.cubic) },
+      () => {
+        stretch.value = withSpring(1, { ...SPRING_CONFIG, damping: 20, stiffness: 135 });
+      },
+    );
+    position.value = withSpring(activeIndex, {
+      ...SPRING_CONFIG,
+      damping: 18,
+      stiffness: 135,
+      mass: 0.9,
+    });
+  }, [activeIndex, position, stretch]);
+
+  const pillStyle = useAnimatedStyle(() => {
+    const left = position.value * TAB_WIDTH;
+    const translateX = left + (TAB_WIDTH - GOOEY_WIDTH) / 2;
+
+    return {
+      transform: [
+        { translateX },
+        { scaleX: stretch.value },
+        { scaleY: 1 / Math.sqrt(stretch.value) },
+      ],
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.liquidPillContainer, pillStyle]} pointerEvents="none">
+      <GlassView
+        style={styles.liquidPillGlass}
+        glassEffectStyle={{
+          style: "regular",
+          animate: true,
+          animationDuration: 0.8,
+        }}
+        isInteractive={false}
+      />
+      <View style={styles.liquidPillGlow} />
+      <View style={styles.liquidPillTint} />
+      <View style={styles.liquidPillBorder} />
+    </Animated.View>
+  );
+};
+
+export const BottomTabs: React.FC<BottomTabBarProps> = ({
+  state,
+  navigation,
 }) => {
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 8);
-  const activeIndex = TABS.findIndex((t) => t.name === activeTab);
+  const tabs = state.routes.map((route) => TAB_ITEMS[route.name as TabRouteName]);
+  const activeRoute = state.routes[state.index];
+  const activeIndex = state.index;
   const rippleOpacity = useSharedValue(0);
+  const canUseLiquidGlass = Platform.OS === "ios" && isLiquidGlassAvailable();
 
   const handleTabPress = useCallback(
-    (name: TabName) => {
+    (name: TabRouteName) => {
+      const routeIndex = state.routes.findIndex((route) => route.name === name);
+      const route = state.routes[routeIndex];
+
+      if (!route) {
+        return;
+      }
+
       rippleOpacity.value = withTiming(1, { duration: 50 }, () => {
         rippleOpacity.value = withTiming(0, { duration: 400 });
       });
-      onTabPress(name);
+
+      const event = navigation.emit({
+        type: "tabPress",
+        target: route.key,
+        canPreventDefault: true,
+      });
+
+      if (state.index !== routeIndex && !event.defaultPrevented) {
+        navigation.navigate(route.name, route.params);
+      }
     },
-    [onTabPress, rippleOpacity],
+    [navigation, rippleOpacity, state.index, state.routes],
+  );
+
+  const handleTabLongPress = useCallback(
+    (name: TabRouteName) => {
+      const route = state.routes.find((item) => item.name === name);
+
+      if (!route) {
+        return;
+      }
+
+      navigation.emit({
+        type: "tabLongPress",
+        target: route.key,
+      });
+    },
+    [navigation, state.routes],
   );
 
   const rippleStyle = useAnimatedStyle(() => ({
@@ -228,19 +322,37 @@ export const BottomTabs: React.FC<BottomTabsProps> = ({
     <View style={[styles.wrapper, { paddingBottom: bottomPadding }]}>
       <Animated.View style={[styles.rippleOverlay, rippleStyle]} />
       <View style={styles.glassContainer}>
+        {canUseLiquidGlass ? (
+          <GlassView
+            style={styles.glassBackground}
+            glassEffectStyle={{
+              style: "regular",
+              animate: true,
+              animationDuration: 0.95,
+            }}
+            isInteractive={false}
+          />
+        ) : (
+          <View style={styles.fallbackGlassBackground} />
+        )}
+
         <View style={styles.glassHighlight} />
         <View style={styles.innerBorder} />
 
-        <GooeyIndicator activeIndex={activeIndex >= 0 ? activeIndex : 0} />
+        {canUseLiquidGlass ? (
+          <LiquidGlassPill activeIndex={activeIndex >= 0 ? activeIndex : 0} />
+        ) : (
+          <GooeyIndicator activeIndex={activeIndex >= 0 ? activeIndex : 0} />
+        )}
 
         <View style={styles.tabsContainer}>
-          {TABS.map((tab, index) => (
+          {tabs.map((tab) => (
             <TabItemComponent
               key={tab.name}
               tab={tab}
-              index={index}
-              isActive={activeTab === tab.name}
+              isActive={activeRoute?.name === tab.name}
               onPress={handleTabPress}
+              onLongPress={handleTabLongPress}
             />
           ))}
         </View>
@@ -264,15 +376,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(8, 54, 230, 0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.10)",
     borderRadius: 35,
   },
   glassContainer: {
     width: TABBAR_WIDTH,
     height: 72,
     borderRadius: 35,
-    backgroundColor: "rgba(255, 255, 255, 0.72)",
     overflow: "hidden",
+    position: "relative",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -285,13 +397,22 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  glassBackground: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 35,
+  },
+  fallbackGlassBackground: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 35,
+    backgroundColor: "rgba(255, 255, 255, 0.68)",
+  },
   glassHighlight: {
     position: "absolute",
     top: 0,
     left: 8,
     right: 8,
     height: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    backgroundColor: "rgba(255, 255, 255, 0.24)",
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
@@ -303,21 +424,66 @@ const styles = StyleSheet.create({
     bottom: 0.5,
     borderRadius: 34.5,
     borderWidth: 0.5,
-    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderColor: "rgba(255, 255, 255, 0.56)",
   },
   gooeyIndicator: {
     position: "absolute",
-    top: 14,
+    top: 11,
     width: GOOEY_WIDTH,
     height: GOOEY_HEIGHT,
-    backgroundColor: "rgba(8, 54, 230, 0.12)",
+    backgroundColor: "rgba(255, 255, 255, 0.58)",
     borderRadius: GOOEY_HEIGHT / 2,
+  },
+  liquidPillContainer: {
+    position: "absolute",
+    top: 11,
+    width: GOOEY_WIDTH,
+    height: GOOEY_HEIGHT,
+    borderRadius: GOOEY_HEIGHT / 2,
+    overflow: "hidden",
+    zIndex: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#FFFFFF",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.18,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  liquidPillGlass: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: GOOEY_HEIGHT / 2,
+  },
+  liquidPillGlow: {
+    position: "absolute",
+    top: 1,
+    left: 6,
+    right: 6,
+    height: GOOEY_HEIGHT * 0.42,
+    borderRadius: GOOEY_HEIGHT / 2,
+    backgroundColor: "rgba(255, 255, 255, 0.20)",
+  },
+  liquidPillTint: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: GOOEY_HEIGHT / 2,
+    backgroundColor: "rgba(255, 255, 255, 0.30)",
+  },
+  liquidPillBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: GOOEY_HEIGHT / 2,
+    borderWidth: 0.75,
+    borderColor: "rgba(255, 255, 255, 0.48)",
   },
   tabsContainer: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     paddingTop: 8,
+    zIndex: 1,
   },
   tabItem: {
     flex: 1,
@@ -331,6 +497,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 20,
+    zIndex: 2,
   },
   tabLabel: {
     fontSize: 11,

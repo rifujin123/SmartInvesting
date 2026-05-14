@@ -1,22 +1,34 @@
-export type RootStackParamList = {
+import { AssetType } from "../../features/investing/data/investableAssets";
+
+export type AuthStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
-  Auth: undefined;
-  Main: undefined;
+  Login: { successMessage?: string } | undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
 };
 
-export type MainTabParamList = {
+export type AppTabParamList = {
   Dashboard: undefined;
   Finance: undefined;
   Portfolio: undefined;
   Transactions: undefined;
 };
 
-export type TabParamList = {
-  dashboard: undefined;
-  finance: undefined;
-  portfolio: undefined;
-  transactions: undefined;
+export type AppStackParamList = {
+  MainTabs: undefined;
+  BuyAssets: { initialAssetType?: AssetType };
+  GoalDetail: { goalId: number };
+  BudgetDetail: { budgetId: number };
+  Profile: undefined;
+  PersonalInformation: undefined;
+  Security: undefined;
+  Settings: undefined;
+};
+
+export type RootStackParamList = {
+  AuthStack: undefined;
+  AppStack: undefined;
 };
 
 declare global {

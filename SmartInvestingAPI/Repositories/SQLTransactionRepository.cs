@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartInvestingAPI.Database;
 using SmartInvestingAPI.Model.Domain;
+using SmartInvestingAPI.Services;
 
 namespace SmartInvestingAPI.Repositories
 {
@@ -29,7 +30,7 @@ namespace SmartInvestingAPI.Repositories
                     throw new InvalidOperationException("Wallet not found or inactive.");
 
                 await dbContext.Transactions.AddAsync(transaction);
-                ApplyTransactionToBalance(wallet, category.Type, transaction.Amount);
+                WalletBalanceRules.ApplyDelta(wallet, WalletBalanceRules.GetTransactionDelta(category.Type, transaction.Amount));
                 await dbContext.SaveChangesAsync();
                 await tx.CommitAsync();
                 return transaction;
@@ -129,8 +130,8 @@ namespace SmartInvestingAPI.Repositories
                     if (oldWallet == null || newWallet == null)
                         throw new InvalidOperationException("Wallet not found or inactive.");
 
-                    ApplyBalanceDelta(oldWallet, -oldDelta);
-                    ApplyBalanceDelta(newWallet, newDelta);
+                    WalletBalanceRules.ApplyDelta(oldWallet, -oldDelta);
+                    WalletBalanceRules.ApplyDelta(newWallet, newDelta);
                 }
                 else
                 {
@@ -139,7 +140,7 @@ namespace SmartInvestingAPI.Repositories
                     if (wallet == null)
                         throw new InvalidOperationException("Wallet not found or inactive.");
 
-                    ApplyBalanceDelta(wallet, newDelta - oldDelta);
+                    WalletBalanceRules.ApplyDelta(wallet, newDelta - oldDelta);
                 }
 
                 existing.Amount = transaction.Amount;
@@ -180,8 +181,8 @@ namespace SmartInvestingAPI.Repositories
                         ?? await dbContext.Categories.FirstOrDefaultAsync(c => c.Id == existing.CategoryId);
                     if (oldCategory != null)
                     {
-                        var applied = TransactionBalanceDelta(oldCategory.Type, existing.Amount);
-                        ApplyBalanceDelta(wallet, -applied);
+                        var applied = WalletBalanceRules.GetTransactionDelta(oldCategory.Type, existing.Amount);
+                        WalletBalanceRules.ApplyDelta(wallet, -applied);
                     }
                 }
 
@@ -264,15 +265,12 @@ namespace SmartInvestingAPI.Repositories
         }
 
         private static decimal TransactionBalanceDelta(TransactionType type, decimal amount)
-            => type == TransactionType.Income ? amount : -amount;
+            => WalletBalanceRules.GetTransactionDelta(type, amount);
 
         private static void ApplyTransactionToBalance(Wallet wallet, TransactionType type, decimal amount)
-            => ApplyBalanceDelta(wallet, TransactionBalanceDelta(type, amount));
+            => WalletBalanceRules.ApplyDelta(wallet, WalletBalanceRules.GetTransactionDelta(type, amount));
 
         private static void ApplyBalanceDelta(Wallet wallet, decimal delta)
-        {
-            wallet.Balance += delta;
-            wallet.LastUpdated = DateTime.UtcNow;
-        }
+            => WalletBalanceRules.ApplyDelta(wallet, delta);
     }
 }

@@ -56,6 +56,11 @@ namespace SmartInvestingAPI.Profiles
                 .ForMember(dest => dest.UserId, opt => opt.Ignore());
             CreateMap<UpdateBudgetRequestDto, Budget>();
 
+            CreateMap<Goal, GoalDto>();
+            CreateMap<AddGoalRequestDto, Goal>()
+                .ForMember(dest => dest.UserId, opt => opt.Ignore());
+            CreateMap<UpdateGoalRequestDto, Goal>();
+
             CreateMap<Asset, AssetDto>().ReverseMap();
             CreateMap<AddAssetRequestDto, Asset>()
                 .ForMember(dest => dest.CurrentPrice, opt => opt.Ignore())

@@ -17,12 +17,14 @@ namespace SmartInvestingAPI.Controllers
         private readonly IAssetRepository assetRepository;
         private readonly IMapper mapper;
         private readonly IMarketPriceService marketPriceService;
+        private readonly IFireAntService fireAntService;
 
-        public AssetsController(IAssetRepository assetRepository, IMapper mapper, IMarketPriceService marketPriceService)
+        public AssetsController(IAssetRepository assetRepository, IMapper mapper, IMarketPriceService marketPriceService, IFireAntService fireAntService)
         {
             this.assetRepository = assetRepository;
             this.mapper = mapper;
             this.marketPriceService = marketPriceService;
+            this.fireAntService = fireAntService;
         }
 
         [HttpGet]
@@ -30,6 +32,30 @@ namespace SmartInvestingAPI.Controllers
         {
             var assets = await assetRepository.GetAllAsync();
             return Ok(ApiResponse<List<AssetDto>>.Ok(mapper.Map<List<AssetDto>>(assets)));
+        }
+
+        [HttpGet("search")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Search([FromQuery] string? keyword, [FromQuery] int limit = 20, [FromQuery] int offset = 0, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(keyword) || keyword.Trim().Length < 2)
+                return Ok(ApiResponse<List<FireAntSymbolResponse>>.Ok(new List<FireAntSymbolResponse>()));
+
+            limit = Math.Clamp(limit, 1, 100);
+            offset = Math.Max(offset, 0);
+            var results = await fireAntService.SearchSymbolsAsync(keyword, limit, offset, cancellationToken);
+            return Ok(ApiResponse<List<FireAntSymbolResponse>>.Ok(results));
+        }
+
+        [HttpGet("stocks")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetStocks([FromQuery] int limit = 20, [FromQuery] int offset = 0, CancellationToken cancellationToken = default)
+        {
+            limit = Math.Clamp(limit, 1, 100);
+            offset = Math.Max(offset, 0);
+
+            var results = await fireAntService.GetSymbolsAsync(limit, offset, cancellationToken);
+            return Ok(ApiResponse<List<FireAntSymbolResponse>>.Ok(results));
         }
 
         [HttpGet("{id:int}")]

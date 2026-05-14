@@ -10,13 +10,19 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { LoginRequest } from "../../../services/auth/types";
 
 interface LoginScreenProps {
   onLogin: (payload: LoginRequest) => void | Promise<void>;
   onRegisterPress: () => void;
   onForgotPasswordPress: () => void;
+  onBiometricLogin?: () => void | Promise<void>;
   isSubmitting?: boolean;
+  isBiometricSubmitting?: boolean;
+  isBiometricAvailable?: boolean;
+  biometricLabel?: string;
+  initialEmail?: string;
   serverError?: string | null;
   clearServerError?: () => void;
 }
@@ -30,11 +36,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onLogin,
   onRegisterPress,
   onForgotPasswordPress,
+  onBiometricLogin,
   isSubmitting = false,
+  isBiometricSubmitting = false,
+  isBiometricAvailable = false,
+  biometricLabel = "Biometric Login",
+  initialEmail = "",
   serverError = null,
   clearServerError,
 }) => {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -174,20 +185,40 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.loginButton, isSubmitting && styles.loginButtonDisabled]}
-            onPress={() => {
-              void handleLogin();
-            }}
-            activeOpacity={0.85}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.loginButtonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.loginActionsRow}>
+            <TouchableOpacity
+              style={[styles.loginButton, isSubmitting && styles.loginButtonDisabled]}
+              onPress={() => {
+                void handleLogin();
+              }}
+              activeOpacity={0.85}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.loginButtonText}>Sign In</Text>
+              )}
+            </TouchableOpacity>
+
+            {onBiometricLogin ? (
+              <TouchableOpacity
+                style={[styles.biometricButton, isBiometricSubmitting && styles.loginButtonDisabled]}
+                onPress={() => {
+                  void onBiometricLogin();
+                }}
+                activeOpacity={0.85}
+                disabled={isBiometricSubmitting || isSubmitting}
+                accessibilityLabel={`Sign in with ${biometricLabel}`}
+              >
+                {isBiometricSubmitting ? (
+                  <ActivityIndicator color="#0836e6" />
+                ) : (
+                  <Ionicons name={biometricLabel === "Face ID" ? "scan-outline" : "finger-print-outline"} size={24} color="#0836e6" />
+                )}
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
 
         <View style={styles.footer}>
@@ -289,7 +320,14 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#0836e6",
   },
+  loginActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+  },
   loginButton: {
+    flex: 1,
     backgroundColor: "#0836e6",
     borderRadius: 12,
     paddingVertical: 16,
@@ -308,6 +346,20 @@ const styles = StyleSheet.create({
   },
   loginButtonDisabled: {
     opacity: 0.7,
+  },
+  biometricButton: {
+    width: 56,
+    height: 56,
+    borderWidth: 1,
+    borderColor: "#0836e6",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  biometricButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0836e6",
   },
   footer: {
     flexDirection: "row",

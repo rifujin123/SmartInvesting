@@ -15,8 +15,9 @@ namespace SmartInvestingAPI.Repositories
 
         public async Task<RefreshToken?> GetByTokenAsync(string token)
         {
+            var now = DateTime.UtcNow;
             return await dbContext.RefreshTokens
-                .FirstOrDefaultAsync(rt => rt.Token == token && rt.IsActive);
+                .FirstOrDefaultAsync(rt => rt.Token == token && !rt.IsRevoked && rt.ExpiresAt > now);
         }
 
         public async Task<RefreshToken> CreateAsync(RefreshToken refreshToken)

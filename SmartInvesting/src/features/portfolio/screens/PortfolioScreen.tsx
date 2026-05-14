@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { formatCurrency, formatNumber } from "../../../shared/utils/formatCurrency";
 import {
   View,
   Text,
@@ -12,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../theme/colors";
 import { spacing } from "../../../theme/spacing";
 import { typography } from "../../../theme/typography";
+import { AppHeader } from "../../../shared/components";
 
 interface PortfolioScreenProps {}
 
@@ -45,13 +47,6 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
 
   const filteredHoldings = activeTab === "all" ? mockHoldings : mockHoldings.filter(h => h.type === activeTab);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
   const renderTab = (tab: "all" | "stock" | "etf" | "gold", label: string) => (
     <TouchableOpacity style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)} activeOpacity={0.7}>
       <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{label}</Text>
@@ -74,27 +69,18 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>John Doe</Text>
-          </View>
-          <TouchableOpacity style={styles.profileButton} activeOpacity={0.7}>
-            <Ionicons name="person" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+        <AppHeader />
 
         {/* Portfolio Summary */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryMain}>
             <Text style={styles.summaryLabel}>Total Value</Text>
-            <Text style={styles.summaryValue}>${totalValue.toLocaleString()}</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(totalValue)}</Text>
           </View>
           <View style={styles.summaryStats}>
             <View style={styles.summaryStat}>
               <Text style={styles.summaryStatLabel}>Total Profit</Text>
-              <Text style={styles.summaryStatValue}>+${totalProfit.toLocaleString()}</Text>
+              <Text style={styles.summaryStatValue}>+{formatNumber(totalProfit)} VND</Text>
             </View>
             <View style={styles.summaryStatDivider} />
             <View style={styles.summaryStat}>
@@ -140,7 +126,7 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
                     </View>
                   </View>
                   <View style={styles.holdingRight}>
-                    <Text style={styles.holdingValue}>${holding.value.toLocaleString()}</Text>
+                    <Text style={styles.holdingValue}>{formatCurrency(holding.value)}</Text>
                     <Text style={[styles.holdingChange, { color: holding.change >= 0 ? colors.success : colors.loss }]}>
                       {holding.change >= 0 ? "+" : ""}{holding.changePercent.toFixed(1)}%
                     </Text>
@@ -196,33 +182,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surface,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing["2xl"] + spacing.xl,
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.surfaceCard,
-  },
-  headerLeft: {},
-  greeting: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  userName: {
-    ...typography.title,
-    color: colors.textPrimary,
-    marginTop: 2,
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.figma.primary,
-    justifyContent: "center",
-    alignItems: "center",
   },
   summaryCard: {
     marginHorizontal: spacing.xl,

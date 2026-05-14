@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartInvestingAPI.Database;
 using SmartInvestingAPI.Model.Domain;
+using SmartInvestingAPI.Services;
 
 namespace SmartInvestingAPI.Repositories
 {
@@ -44,8 +45,7 @@ namespace SmartInvestingAPI.Repositories
                 throw new InvalidOperationException("Wallet not found or inactive.");
 
             await dbContext.IncomeEvents.AddAsync(entity);
-            wallet.Balance += entity.Amount;
-            wallet.LastUpdated = DateTime.UtcNow;
+            WalletBalanceRules.ApplyDelta(wallet, WalletBalanceRules.GetIncomeDelta(entity.Amount));
             await dbContext.SaveChangesAsync();
             return entity;
         }
@@ -70,8 +70,7 @@ namespace SmartInvestingAPI.Repositories
             existing.Note = entity.Note;
             existing.LastUpdated = DateTime.UtcNow;
 
-            wallet.Balance += entity.Amount - oldAmount;
-            wallet.LastUpdated = DateTime.UtcNow;
+            WalletBalanceRules.ApplyDelta(wallet, WalletBalanceRules.GetIncomeDelta(entity.Amount - oldAmount));
 
             await dbContext.SaveChangesAsync();
             return existing;
@@ -88,8 +87,7 @@ namespace SmartInvestingAPI.Repositories
                 .FirstOrDefaultAsync(w => w.Id == existing.WalletId && w.IsActive);
             if (wallet != null)
             {
-                wallet.Balance -= existing.Amount;
-                wallet.LastUpdated = DateTime.UtcNow;
+                WalletBalanceRules.ApplyDelta(wallet, -WalletBalanceRules.GetIncomeDelta(existing.Amount));
             }
 
             existing.IsActive = false;

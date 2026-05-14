@@ -1,1259 +1,801 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  Modal,
-  Animated,
-  LayoutAnimation,
-  Platform,
-  UIManager,
-  Keyboard,
-  KeyboardAvoidingView,
-  TouchableWithoutFeedback,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { AppTabParamList } from "../../../shared/navigation/types";
+import { AppHeader } from "../../../shared/components";
 import { colors } from "../../../theme/colors";
 import { spacing } from "../../../theme/spacing";
 import { typography } from "../../../theme/typography";
+import { MoneyText } from "../../../components/finance/MoneyText";
+import { SegmentedControl } from "../../../components/finance/SegmentedControl";
+import { TransactionRow } from "../../../components/finance/TransactionRow";
+import { SkeletonCard } from "../../../components/finance/SkeletonCard";
+import { BudgetsScreen } from "./BudgetsScreen";
+import { tokenStorage } from "../../../services/auth/tokenStorage";
+import { walletsService } from "../../../services/wallets/walletsService";
+import { transactionsService } from "../../../services/transactions/transactionsService";
+import { financeService } from "../../../services/finance/financeService";
+import type { WalletDto } from "../../../services/wallets/types";
+import type { TransactionDto } from "../../../services/transactions/types";
+import type { BudgetDto, BudgetSummaryDto, GoalDto } from "../../../services/finance/types";
 
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+type FinanceTab = "overview" | "transactions" | "budgets";
+type FinanceNavigation = BottomTabNavigationProp<AppTabParamList, "Finance">;
 
-interface Budget {
-  id: string;
-  name: string;
-  amount: number;
-  spent: number;
-  period: "week" | "month";
-  category:
-    | "food"
-    | "transport"
-    | "entertainment"
-    | "shopping"
-    | "bills"
-    | "other";
-}
-
-interface Goal {
-  id: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-}
-
-const mockBudgets: Budget[] = [
-  {
-    id: "1",
-    name: "Food & Dining",
-    amount: 500,
-    spent: 320,
-    period: "month",
-    category: "food",
-  },
-  {
-    id: "2",
-    name: "Transportation",
-    amount: 200,
-    spent: 85,
-    period: "month",
-    category: "transport",
-  },
-  {
-    id: "3",
-    name: "Entertainment",
-    amount: 150,
-    spent: 120,
-    period: "month",
-    category: "entertainment",
-  },
+const monthNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
-const mockGoals: Goal[] = [
-  {
-    id: "1",
-    name: "Emergency Fund",
-    targetAmount: 10000,
-    currentAmount: 6500,
-    deadline: "Dec 2026",
-    icon: "shield-checkmark",
-    color: "#DCFCE7",
-  },
-  {
-    id: "2",
-    name: "Vacation",
-    targetAmount: 5000,
-    currentAmount: 2800,
-    deadline: "Aug 2026",
-    icon: "airplane",
-    color: "#DBEAFE",
-  },
-  {
-    id: "3",
-    name: "New Car",
-    targetAmount: 25000,
-    currentAmount: 5000,
-    deadline: "Dec 2027",
-    icon: "car",
-    color: "#FEF3C7",
-  },
-];
-
-const categories = [
-  {
-    key: "food" as const,
-    label: "Food",
-    icon: "restaurant" as const,
-    color: "#FEF3C7",
-    iconColor: "#D97706",
-  },
-  {
-    key: "transport" as const,
-    label: "Transport",
-    icon: "car" as const,
-    color: "#DBEAFE",
-    iconColor: "#2563EB",
-  },
-  {
-    key: "entertainment" as const,
-    label: "Entertainment",
-    icon: "game-controller" as const,
-    color: "#F3E8FF",
-    iconColor: "#9333EA",
-  },
-  {
-    key: "shopping" as const,
-    label: "Shopping",
-    icon: "cart" as const,
-    color: "#FFEDD5",
-    iconColor: "#EA580C",
-  },
-  {
-    key: "bills" as const,
-    label: "Bills",
-    icon: "document-text" as const,
-    color: "#CCFBF1",
-    iconColor: "#0D9488",
-  },
-  {
-    key: "other" as const,
-    label: "Other",
-    icon: "ellipsis-horizontal" as const,
-    color: "#E2E8F0",
-    iconColor: "#64748B",
-  },
-];
+// Design tokens from DESIGN_FLOWCHART.md
+const designTokens = {
+  background: "#FFFFFF",
+  surface: "#F8FAFC",
+  surfaceCard: "#FFFFFF",
+  border: "#E2E8F0",
+  borderLight: "#F1F5F9",
+  textPrimary: "#0F172A",
+  textSecondary: "#64748B",
+  textMuted: "#94A3B8",
+  primary: "#3B82F6",
+  primaryHover: "#2563EB",
+  primaryPressed: "#1D4ED8",
+  primaryLight: "#EFF6FF",
+  success: "#22C55E",
+  successLight: "#F0FDF4",
+  loss: "#EF4444",
+  lossLight: "#FEF2F2",
+  warning: "#F59E0B",
+  warningLight: "#FFFBEB",
+  heroBg: "#0F172A",
+  heroText: "#FFFFFF",
+  heroMuted: "#94A3B8",
+};
 
 export const FinanceScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"budget" | "goals">("budget");
-  const [budgetPeriod, setBudgetPeriod] = useState<"week" | "month">("month");
-  const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
-  const [showAddGoalModal, setShowAddGoalModal] = useState(false);
-  const [showSetTotalBudgetModal, setShowSetTotalBudgetModal] = useState(false);
-  const [newBudgetName, setNewBudgetName] = useState("");
-  const [newBudgetAmount, setNewBudgetAmount] = useState("");
-  const [newGoalName, setNewGoalName] = useState("");
-  const [newGoalAmount, setNewGoalAmount] = useState("");
-  const [totalBudgetAmount, setTotalBudgetAmount] = useState("1500");
+  const [activeTab, setActiveTab] = useState<FinanceTab>("overview");
+  const navigation = useNavigation<FinanceNavigation>();
 
-  // Animations
-  const tabIndicatorAnim = useRef(new Animated.Value(0)).current;
-  const periodIndicatorAnim = useRef(new Animated.Value(1)).current;
+  // Auth & Wallet state
+  const [token, setToken] = useState<string | null>(null);
+  const [wallets, setWallets] = useState<WalletDto[]>([]);
+  const [activeWallet, setActiveWallet] = useState<WalletDto | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return { month: now.getMonth() + 1, year: now.getFullYear() };
+  });
 
-  const filteredBudgets = mockBudgets.filter((b) => b.period === budgetPeriod);
+  // Data state
+  const [budgets, setBudgets] = useState<BudgetDto[]>([]);
+  const [budgetSummaries, setBudgetSummaries] = useState<BudgetSummaryDto[]>([]);
+  const [goals, setGoals] = useState<GoalDto[]>([]);
+  const [recentTx, setRecentTx] = useState<TransactionDto[]>([]);
 
-  const totalBudgetAmountNum = parseFloat(totalBudgetAmount) || 0;
-  const totalBudget = filteredBudgets.reduce((acc, b) => acc + b.amount, 0);
-  const totalSpent = filteredBudgets.reduce((acc, b) => acc + b.spent, 0);
-  const remaining = totalBudgetAmountNum - totalSpent;
+  // Loading & Error states
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleTabChange = (tab: "budget" | "goals") => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    Animated.spring(tabIndicatorAnim, {
-      toValue: tab === "budget" ? 0 : 1,
-      useNativeDriver: true,
-      tension: 150,
-      friction: 15,
-    }).start();
-    setActiveTab(tab);
+  // Load auth token
+  const loadToken = useCallback(async () => {
+    const { accessToken } = await tokenStorage.getTokens();
+    if (accessToken) setToken(accessToken);
+  }, []);
+
+  // Load all data in parallel (per flowchart)
+  const loadData = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Parallel requests per DESIGN_FLOWCHART.md flowchart
+      const [walletsRes, budgetsRes] = await Promise.all([
+        walletsService.getMyWallets(token),
+        financeService.getBudgets(token),
+      ]);
+
+      setWallets(walletsRes.items);
+
+      // Select active wallet (first one)
+      if (walletsRes.items.length > 0) {
+        setActiveWallet(walletsRes.items[0]);
+      }
+
+      // Filter budgets by current month/year
+      const filteredBudgets = budgetsRes.filter(
+        (b) => b.month === currentMonth.month && b.year === currentMonth.year,
+      );
+      setBudgets(filteredBudgets);
+
+      // Get budget summaries in parallel
+      const summaries = await Promise.all(
+        filteredBudgets.map(async (budget) => {
+          try {
+            return await financeService.getBudgetSummary(token, budget.id);
+          } catch {
+            return {
+              ...budget,
+              budgetId: budget.id,
+              totalSpent: 0,
+              remaining: budget.amountLimit,
+            };
+          }
+        }),
+      );
+      setBudgetSummaries(summaries);
+
+      // Load goals (filter not completed)
+      const goalsData = await financeService.getGoals(token);
+      setGoals(goalsData.filter((g) => !g.isCompleted));
+
+      // Load recent transactions (top 5)
+      if (walletsRes.items.length > 0) {
+        const txRes = await transactionsService.getTransactionsByWallet(
+          token,
+          walletsRes.items[0].id,
+          1, // page
+          5  // pageSize
+        );
+        setRecentTx(txRes.items);
+      }
+    } catch (e) {
+      console.error("loadData error", e);
+      setError("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  }, [token, currentMonth]);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
+
+  // Initial load
+  useEffect(() => {
+    loadToken();
+  }, [loadToken]);
+
+  useEffect(() => {
+    if (token) {
+      loadData();
+    }
+  }, [token, loadData]);
+
+  // Computed values
+  const totalBudget = budgets.reduce((sum, b) => sum + b.amountLimit, 0);
+  const totalSpent = budgetSummaries.reduce((sum, b) => sum + b.totalSpent, 0);
+  const remaining = budgetSummaries.reduce((sum, b) => sum + b.remaining, 0);
+  const monthLabel = `${monthNames[currentMonth.month - 1]} ${currentMonth.year}`;
+  const progressPercent = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+
+  // Progress bar color per token spec
+  const getProgressColor = (percent: number) => {
+    if (percent >= 90) return designTokens.loss;
+    if (percent >= 70) return designTokens.warning;
+    return designTokens.success;
   };
 
-  const handlePeriodChange = (period: "week" | "month") => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    Animated.spring(periodIndicatorAnim, {
-      toValue: period === "week" ? 0 : 1,
-      useNativeDriver: true,
-      tension: 150,
-      friction: 15,
-    }).start();
-    setBudgetPeriod(period);
+  const changeMonth = (delta: number) => {
+    let m = currentMonth.month + delta;
+    let y = currentMonth.year;
+    if (m > 12) { m = 1; y += 1; }
+    else if (m < 1) { m = 12; y -= 1; }
+    setCurrentMonth({ month: m, year: y });
   };
 
-  const handleAddBudget = () => {
-    setShowAddBudgetModal(false);
-    setNewBudgetName("");
-    setNewBudgetAmount("");
+  const handleAddTransaction = () => {
+    navigation.navigate("Transactions");
   };
 
   const handleAddGoal = () => {
-    setShowAddGoalModal(false);
-    setNewGoalName("");
-    setNewGoalAmount("");
+    // TODO: navigate to Goals screen when available
   };
 
-  const handleSetTotalBudget = () => {
-    setShowSetTotalBudgetModal(false);
+  const handleViewAllTx = () => {
+    navigation.navigate("Transactions");
   };
 
-  const getCategoryInfo = (category: Budget["category"]) => {
-    return categories.find((c) => c.key === category) || categories[5];
+  const handleGoalPress = (_goalId: number) => {
+    // TODO: navigate to GoalDetail when available
   };
 
-  const getProgressColor = (spent: number, amount: number) => {
-    const percentage = (spent / amount) * 100;
-    if (percentage >= 90) return colors.loss;
-    if (percentage >= 70) return "#F59E0B";
-    return colors.success;
-  };
+  // Budgets tab
+  if (activeTab === "budgets") {
+    return (
+      <View style={styles.container}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <AppHeader />
+          <View style={styles.segmentWrap}>
+            <SegmentedControl
+              options={[
+                { label: "Overview", value: "overview" },
+                { label: "Transactions", value: "transactions" },
+                { label: "Budgets", value: "budgets" },
+              ]}
+              selectedValue={activeTab}
+              onChange={(value) => setActiveTab(value as FinanceTab)}
+            />
+          </View>
+          <BudgetsScreen embedded />
+        </ScrollView>
+      </View>
+    );
+  }
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
+  // Transactions tab
+  if (activeTab === "transactions") {
+    return (
+      <View style={styles.container}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <AppHeader />
+          <View style={styles.segmentWrap}>
+            <SegmentedControl
+              options={[
+                { label: "Overview", value: "overview" },
+                { label: "Transactions", value: "transactions" },
+                { label: "Budgets", value: "budgets" },
+              ]}
+              selectedValue={activeTab}
+              onChange={(value) => setActiveTab(value as FinanceTab)}
+            />
+          </View>
+          {/* Recent tx list - navigate to Transactions screen */}
+          <TouchableOpacity onPress={handleViewAllTx} style={styles.viewAllCard}>
+            <Text style={styles.viewAllText}>View all transactions →</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Loading state - skeleton per DESIGN_FLOWCHART.md
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <AppHeader />
+        <View style={styles.heroSkeleton}>
+          <SkeletonCard height={200} />
+        </View>
+        <View style={styles.contentPad}>
+          <SkeletonCard height={100} />
+        </View>
+      </View>
+    );
+  }
+
+  // No token - empty state
+  if (!token) {
+    return (
+      <View style={styles.container}>
+        <AppHeader />
+        <View style={styles.emptyState}>
+          <Ionicons name="wallet-outline" size={64} color={designTokens.textMuted} />
+          <Text style={styles.emptyTitle}>Please login</Text>
+          <Text style={styles.emptySubtitle}>Sign in to view your finances</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // No wallet - onboarding
+  if (wallets.length === 0) {
+    return (
+      <View style={styles.container}>
+        <AppHeader />
+        <View style={styles.emptyState}>
+          <Ionicons name="add-circle-outline" size={64} color={designTokens.textMuted} />
+          <Text style={styles.emptyTitle}>Create your first wallet</Text>
+          <TouchableOpacity style={styles.createWalletBtn}>
+            <Text style={styles.createWalletText}>NEW WALLET</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>John Doe</Text>
-          </View>
-          <TouchableOpacity style={styles.profileButton} activeOpacity={0.7}>
-            <Ionicons name="person" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
+        }
+      >
+        <AppHeader />
 
-        {/* Tab Selector with Animated Indicator */}
-        <View style={styles.tabContainer}>
-          <Animated.View
-            style={[
-              styles.tabIndicator,
-              {
-                transform: [
-                  {
-                    translateX: tabIndicatorAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, 108],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          />
-          <TouchableOpacity
-            style={styles.tab}
-            onPress={() => handleTabChange("budget")}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={activeTab === "budget" ? "wallet" : "wallet-outline"}
-              size={20}
-              color={activeTab === "budget" ? "#FFFFFF" : colors.textSecondary}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "budget" && styles.tabTextActive,
-              ]}
-            >
-              Budget
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.tab}
-            onPress={() => handleTabChange("goals")}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={activeTab === "goals" ? "flag" : "flag-outline"}
-              size={20}
-              color={activeTab === "goals" ? "#FFFFFF" : colors.textSecondary}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "goals" && styles.tabTextActive,
-              ]}
-            >
-              Goals
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {activeTab === "budget" ? (
-          <>
-            {/* Period Switch with Animated Indicator */}
-            <View style={styles.periodContainer}>
-              <Animated.View
-                style={[
-                  styles.periodIndicator,
-                  {
-                    transform: [
-                      {
-                        translateX: periodIndicatorAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 64],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              />
-              <TouchableOpacity
-                style={styles.periodButton}
-                onPress={() => handlePeriodChange("week")}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.periodText,
-                    budgetPeriod === "week" && styles.periodTextActive,
-                  ]}
-                >
-                  Week
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.periodButton}
-                onPress={() => handlePeriodChange("month")}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.periodText,
-                    budgetPeriod === "month" && styles.periodTextActive,
-                  ]}
-                >
-                  Month
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Budget Summary Card */}
+        {/* HERO CARD - Dark hero per token spec */}
+        <TouchableOpacity style={styles.hero} activeOpacity={0.9}>
+          <View style={styles.heroTopline}>
             <TouchableOpacity
-              style={styles.summaryCard}
-              onPress={() => setShowSetTotalBudgetModal(true)}
-              activeOpacity={0.7}
+              style={styles.monthPicker}
+              onPress={() => changeMonth(-1)}
             >
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Total Budget</Text>
-                  <Text style={styles.summaryValue}>
-                    ${totalBudgetAmountNum}
-                  </Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Spent</Text>
-                  <Text style={[styles.summaryValue, { color: colors.loss }]}>
-                    ${totalSpent}
-                  </Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Left</Text>
-                  <Text
-                    style={[styles.summaryValue, { color: colors.success }]}
-                  >
-                    ${remaining}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.summaryEditHint}>
-                <Ionicons name="pencil" size={12} color={colors.textMuted} />
-                <Text style={styles.summaryEditText}>Tap to edit budget</Text>
-              </View>
+              <Ionicons name="chevron-back" size={20} color={designTokens.heroText} />
             </TouchableOpacity>
+            <Text style={styles.monthLabel}>{monthLabel}</Text>
+            <TouchableOpacity
+              style={styles.monthPicker}
+              onPress={() => changeMonth(1)}
+            >
+              <Ionicons name="chevron-forward" size={20} color={designTokens.heroText} />
+            </TouchableOpacity>
+          </View>
 
-            {/* Budget List */}
-            <View style={styles.listSection}>
-              <View style={styles.listHeader}>
-                <Text style={styles.listTitle}>Your Budgets</Text>
-                <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={() => setShowAddBudgetModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-              {filteredBudgets.map((budget) => {
-                const category = getCategoryInfo(budget.category);
-                const progress = (budget.spent / budget.amount) * 100;
-                const progressColor = getProgressColor(
-                  budget.spent,
-                  budget.amount,
-                );
-                return (
-                  <View key={budget.id} style={styles.budgetCard}>
-                    <View style={styles.budgetHeader}>
-                      <View style={styles.budgetLeft}>
-                        <View
-                          style={[
-                            styles.budgetIcon,
-                            { backgroundColor: category.color },
-                          ]}
-                        >
-                          <Ionicons
-                            name={category.icon}
-                            size={20}
-                            color={category.iconColor}
-                          />
-                        </View>
-                        <Text style={styles.budgetName}>{budget.name}</Text>
-                      </View>
-                      <Text style={styles.budgetAmount}>${budget.amount}</Text>
-                    </View>
-                    <View style={styles.progressContainer}>
-                      <View style={styles.progressBar}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            {
-                              width: `${Math.min(progress, 100)}%`,
-                              backgroundColor: progressColor,
-                            },
-                          ]}
-                        />
-                      </View>
-                      <View style={styles.progressLabels}>
-                        <Text style={styles.progressText}>
-                          ${budget.spent} spent
-                        </Text>
-                        <Text
-                          style={[
-                            styles.progressText,
-                            { color: progressColor },
-                          ]}
-                        >
-                          {progress.toFixed(0)}%
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </>
-        ) : (
-          <>
-            {/* Goals Summary */}
-            <View style={styles.goalsSummaryCard}>
-              <View style={styles.goalsSummaryHeader}>
-                <Ionicons name="trophy" size={24} color="#F59E0B" />
-                <Text style={styles.goalsSummaryTitle}>Active Goals</Text>
-                <Text style={styles.goalsSummaryCount}>{mockGoals.length}</Text>
-              </View>
-              <Text style={styles.goalsSummarySubtitle}>
-                $
-                {mockGoals
-                  .reduce((acc, g) => acc + g.currentAmount, 0)
-                  .toLocaleString()}{" "}
-                saved of $
-                {mockGoals
-                  .reduce((acc, g) => acc + g.targetAmount, 0)
-                  .toLocaleString()}
-              </Text>
-            </View>
+          <Text style={styles.heroTitle}>REMAINING</Text>
+          <MoneyText
+            amount={remaining}
+            size="lg"
+            style={styles.heroBalance}
+            color={designTokens.heroText}
+          />
 
-            {/* Goals List */}
-            <View style={styles.listSection}>
-              <View style={styles.listHeader}>
-                <Text style={styles.listTitle}>Your Goals</Text>
+          <View style={styles.budgetRow}>
+            <View style={styles.budgetItem}>
+              <Text style={styles.budgetLabel}>SPENT</Text>
+              <MoneyText amount={totalSpent} size="md" color={designTokens.heroMuted} />
+            </View>
+            <View style={styles.budgetDivider} />
+            <View style={styles.budgetItem}>
+              <Text style={styles.budgetLabel}>BUDGET</Text>
+              <MoneyText amount={totalBudget} size="md" color={designTokens.heroText} />
+            </View>
+          </View>
+
+          {/* Progress bar per token spec */}
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${Math.min(progressPercent, 100)}%`,
+                  backgroundColor: getProgressColor(progressPercent),
+                },
+              ]}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {/* SEGMENTED TABS */}
+        <View style={styles.segmentWrap}>
+          <SegmentedControl
+            options={[
+              { label: "Overview", value: "overview" },
+              { label: "Transactions", value: "transactions" },
+              { label: "Budgets", value: "budgets" },
+            ]}
+            selectedValue={activeTab}
+            onChange={(value) => setActiveTab(value as FinanceTab)}
+          />
+        </View>
+
+        {/* KPI GRID */}
+        <View style={styles.kpiGrid}>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>BUDGETS</Text>
+            <Text style={styles.kpiValue}>{budgets.length}</Text>
+            <Text style={styles.kpiCaption}>active this month</Text>
+          </View>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>GOALS</Text>
+            <Text style={styles.kpiValue}>{goals.length}</Text>
+            <Text style={styles.kpiCaption}>in progress</Text>
+          </View>
+        </View>
+
+        {/* GOALS SECTION */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>GOALS</Text>
+            <TouchableOpacity style={styles.addBtn} onPress={handleAddGoal}>
+              <Ionicons name="add" size={16} color={designTokens.heroText} />
+              <Text style={styles.addBtnText}>NEW</Text>
+            </TouchableOpacity>
+          </View>
+
+          {goals.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="flag-outline" size={32} color={designTokens.textMuted} />
+              <Text style={styles.emptyCardText}>No goals yet</Text>
+              <Text style={styles.emptyCardSubtext}>Start a savings goal</Text>
+            </View>
+          ) : (
+            <View style={styles.listCard}>
+              {goals.slice(0, 3).map((goal) => (
                 <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={() => setShowAddGoalModal(true)}
-                  activeOpacity={0.7}
+                  key={goal.id}
+                  style={styles.goalRow}
+                  onPress={() => handleGoalPress(goal.id)}
                 >
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-              {mockGoals.map((goal) => {
-                const progress = (goal.currentAmount / goal.targetAmount) * 100;
-                return (
-                  <View key={goal.id} style={styles.goalCard}>
-                    <View style={styles.goalHeader}>
-                      <View
-                        style={[
-                          styles.goalIcon,
-                          { backgroundColor: goal.color },
-                        ]}
-                      >
-                        <Ionicons
-                          name={goal.icon}
-                          size={24}
-                          color={colors.textPrimary}
-                        />
-                      </View>
-                      <View style={styles.goalInfo}>
-                        <Text style={styles.goalName}>{goal.name}</Text>
-                        <Text style={styles.goalDeadline}>
-                          Target: {goal.deadline}
-                        </Text>
-                      </View>
-                      <View style={styles.goalPercentage}>
-                        <Text style={styles.goalPercentageText}>
-                          {progress.toFixed(0)}%
-                        </Text>
-                      </View>
+                  <View style={styles.goalLeft}>
+                    <View
+                      style={[
+                        styles.goalIcon,
+                        { backgroundColor: goal.color || designTokens.primary }
+                      ]}
+                    >
+                      <Ionicons
+                        name={(goal.icon as keyof typeof Ionicons.glyphMap) || "flag"}
+                        size={16}
+                        color={designTokens.heroText}
+                      />
                     </View>
-                    <View style={styles.goalProgressContainer}>
-                      <View style={styles.goalProgressBar}>
-                        <View
-                          style={[
-                            styles.goalProgressFill,
-                            { width: `${progress}%` },
-                          ]}
-                        />
-                      </View>
-                    </View>
-                    <View style={styles.goalAmounts}>
-                      <Text style={styles.goalCurrent}>
-                        ${goal.currentAmount.toLocaleString()}
-                      </Text>
-                      <Text style={styles.goalTarget}>
-                        of ${goal.targetAmount.toLocaleString()}
+                    <View>
+                      <Text style={styles.goalName}>{goal.name}</Text>
+                      <Text style={styles.goalAmount}>
+                        {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
                       </Text>
                     </View>
                   </View>
-                );
-              })}
+                  <Text style={styles.goalPercent}>
+                    {Math.round(goal.progressPercent)}%
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          </>
-        )}
+          )}
+        </View>
+
+        {/* RECENT TRANSACTIONS SECTION */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>RECENT TRANSACTIONS</Text>
+            <TouchableOpacity onPress={handleViewAllTx}>
+              <Text style={styles.sectionAction}>VIEW ALL</Text>
+            </TouchableOpacity>
+          </View>
+
+          {recentTx.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="receipt-outline" size={32} color={designTokens.textMuted} />
+              <Text style={styles.emptyCardText}>No transactions yet</Text>
+            </View>
+          ) : (
+            <View style={styles.listCard}>
+              {recentTx.map((tx) => (
+                <TransactionRow
+                  key={tx.id}
+                  transaction={{
+                    id: tx.id,
+                    type: tx.amount >= 0 ? 'deposit' : 'withdraw',
+                    title: tx.categoryName || 'Transaction',
+                    subtitle: tx.note || '',
+                    amount: tx.amount,
+                    date: tx.transactionDate,
+                    icon: tx.categoryIcon as any,
+                  }}
+                  onPress={() => {}}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Bottom spacer for FAB */}
+        <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Add Budget Modal */}
-      <Modal
-        visible={showAddBudgetModal}
-        transparent
-        onRequestClose={() => setShowAddBudgetModal(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-          <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-              style={styles.modalKeyboardView}
-            >
-              <TouchableWithoutFeedback>
-                <View style={styles.modalContent}>
-                  <View style={styles.modalHeader}>
-                    <View style={styles.modalHandle} />
-                    <View style={styles.modalTitleRow}>
-                      <Text style={styles.modalTitle}>Add Budget</Text>
-                      <TouchableOpacity
-                        style={styles.modalCloseBtn}
-                        onPress={() => setShowAddBudgetModal(false)}
-                      >
-                        <Ionicons
-                          name="close"
-                          size={20}
-                          color={colors.textSecondary}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <View style={styles.modalForm}>
-                    <Text style={styles.modalLabel}>Budget Name</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="e.g., Food & Dining"
-                      placeholderTextColor={colors.textMuted}
-                      value={newBudgetName}
-                      onChangeText={setNewBudgetName}
-                    />
-                    <Text
-                      style={[styles.modalLabel, { marginTop: spacing.base }]}
-                    >
-                      Amount ($)
-                    </Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="0.00"
-                      placeholderTextColor={colors.textMuted}
-                      keyboardType="decimal-pad"
-                      value={newBudgetAmount}
-                      onChangeText={setNewBudgetAmount}
-                    />
-                  </View>
-                  <View style={styles.modalButtons}>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnCancel]}
-                      onPress={() => setShowAddBudgetModal(false)}
-                    >
-                      <Text style={styles.modalBtnCancelText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnConfirm]}
-                      onPress={handleAddBudget}
-                    >
-                      <Text style={styles.modalBtnConfirmText}>
-                        Create Budget
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      {/* Add Goal Modal */}
-      <Modal
-        visible={showAddGoalModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowAddGoalModal(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-          <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-              style={styles.modalKeyboardView}
-            >
-              <TouchableWithoutFeedback>
-                <View style={styles.modalContent}>
-                  <View style={styles.modalHeader}>
-                    <View style={styles.modalHandle} />
-                    <View style={styles.modalTitleRow}>
-                      <Text style={styles.modalTitle}>Add Goal</Text>
-                      <TouchableOpacity
-                        style={styles.modalCloseBtn}
-                        onPress={() => setShowAddGoalModal(false)}
-                      >
-                        <Ionicons
-                          name="close"
-                          size={20}
-                          color={colors.textSecondary}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <View style={styles.modalForm}>
-                    <Text style={styles.modalLabel}>Goal Name</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="e.g., Emergency Fund"
-                      placeholderTextColor={colors.textMuted}
-                      value={newGoalName}
-                      onChangeText={setNewGoalName}
-                    />
-                    <Text
-                      style={[styles.modalLabel, { marginTop: spacing.base }]}
-                    >
-                      Target Amount ($)
-                    </Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="0.00"
-                      placeholderTextColor={colors.textMuted}
-                      keyboardType="decimal-pad"
-                      value={newGoalAmount}
-                      onChangeText={setNewGoalAmount}
-                    />
-                  </View>
-                  <View style={styles.modalButtons}>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnCancel]}
-                      onPress={() => setShowAddGoalModal(false)}
-                    >
-                      <Text style={styles.modalBtnCancelText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnConfirm]}
-                      onPress={handleAddGoal}
-                    >
-                      <Text style={styles.modalBtnConfirmText}>
-                        Create Goal
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      {/* Set Total Budget Modal */}
-      <Modal
-        visible={showSetTotalBudgetModal}
-        transparent
-        onRequestClose={() => setShowSetTotalBudgetModal(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-          <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-              style={styles.modalKeyboardView}
-            >
-              <TouchableWithoutFeedback>
-                <View style={styles.modalContent}>
-                  <View style={styles.modalHeader}>
-                    <View style={styles.modalHandle} />
-                    <View style={styles.modalTitleRow}>
-                      <Text style={styles.modalTitle}>Set Total Budget</Text>
-                      <TouchableOpacity
-                        style={styles.modalCloseBtn}
-                        onPress={() => setShowSetTotalBudgetModal(false)}
-                      >
-                        <Ionicons
-                          name="close"
-                          size={20}
-                          color={colors.textSecondary}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                    <Text style={styles.modalSubtitle}>
-                      How much can you spend this {budgetPeriod}?
-                    </Text>
-                  </View>
-                  <View style={styles.modalForm}>
-                    <Text style={styles.modalLabel}>Budget Amount ($)</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="0.00"
-                      placeholderTextColor={colors.textMuted}
-                      keyboardType="decimal-pad"
-                      value={totalBudgetAmount}
-                      onChangeText={setTotalBudgetAmount}
-                      autoFocus
-                    />
-                  </View>
-                  <View style={styles.periodQuickSelect}>
-                    <Text style={styles.quickSelectLabel}>Quick select:</Text>
-                    <View style={styles.quickSelectButtons}>
-                      {[500, 1000, 1500, 2000].map((amount) => (
-                        <TouchableOpacity
-                          key={amount}
-                          style={[
-                            styles.quickSelectBtn,
-                            totalBudgetAmount === String(amount) &&
-                              styles.quickSelectBtnActive,
-                          ]}
-                          onPress={() => setTotalBudgetAmount(String(amount))}
-                        >
-                          <Text
-                            style={[
-                              styles.quickSelectBtnText,
-                              totalBudgetAmount === String(amount) &&
-                                styles.quickSelectBtnTextActive,
-                            ]}
-                          >
-                            ${amount}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                  <View style={styles.modalButtons}>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnCancel]}
-                      onPress={() => setShowSetTotalBudgetModal(false)}
-                    >
-                      <Text style={styles.modalBtnCancelText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnConfirm]}
-                      onPress={handleSetTotalBudget}
-                    >
-                      <Text style={styles.modalBtnConfirmText}>Save</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+      {/* FAB - Add Transaction */}
+      <TouchableOpacity style={styles.fab} onPress={handleAddTransaction}>
+        <Ionicons name="add" size={28} color={designTokens.heroText} />
+      </TouchableOpacity>
     </View>
   );
+};
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(amount);
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: designTokens.background,
   },
-  header: {
+  contentPad: {
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.lg,
+  },
+
+  // Hero card per design token spec
+  hero: {
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.lg,
+    padding: spacing["2xl"],
+    backgroundColor: designTokens.heroBg,
+    borderRadius: 20,
+    shadowColor: designTokens.heroBg,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  heroTopline: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing["2xl"] + spacing.xl,
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.surfaceCard,
+    marginBottom: spacing.lg,
   },
-  headerLeft: {},
-  greeting: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  userName: {
-    ...typography.title,
-    color: colors.textPrimary,
-    marginTop: 2,
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.figma.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  tabContainer: {
-    flexDirection: "row",
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.lg,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 16,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-    position: "relative",
-    width: 216,
-    alignSelf: "flex-start",
-  },
-  tabIndicator: {
-    position: "absolute",
-    top: 4,
-    bottom: 4,
-    left: 4,
-    width: 100,
-    backgroundColor: colors.figma.primary,
+  monthPicker: {
+    padding: spacing.sm,
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
   },
-  tab: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    gap: spacing.sm,
-    zIndex: 1,
-  },
-  tabText: {
+  monthLabel: {
     ...typography.body,
-    fontWeight: "500",
-    color: colors.textSecondary,
-  },
-  tabTextActive: {
-    color: "#FFFFFF",
+    color: designTokens.heroText,
     fontWeight: "600",
   },
-  periodContainer: {
-    flexDirection: "row",
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.base,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 12,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignSelf: "flex-start",
-    position: "relative",
-    width: 128,
-  },
-  periodIndicator: {
-    position: "absolute",
-    top: 4,
-    bottom: 4,
-    left: 4,
-    width: 60,
-    backgroundColor: colors.figma.primary,
-    borderRadius: 8,
-  },
-  periodButton: {
-    width: 60,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    alignItems: "center",
-    zIndex: 1,
-  },
-  periodButtonActive: {},
-  periodText: {
+  heroTitle: {
     ...typography.caption,
-    fontWeight: "500",
-    color: colors.textSecondary,
+    color: designTokens.heroMuted,
+    fontWeight: "600",
+    letterSpacing: 1,
   },
-  periodTextActive: {
-    color: "#FFFFFF",
-  },
-  summaryCard: {
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.base,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 16,
-    padding: spacing.base,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  summaryEditHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: spacing.sm,
-    gap: 4,
-  },
-  summaryEditText: {
-    ...typography.caption,
-    color: colors.textMuted,
-    fontSize: 11,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  summaryItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  summaryLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  summaryValue: {
-    fontSize: 18,
+  heroBalance: {
+    fontSize: 36,
     fontWeight: "700",
-    color: colors.textPrimary,
+    color: designTokens.heroText,
     marginTop: spacing.xs,
   },
-  summaryDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: colors.border,
-  },
-  listSection: {
-    paddingHorizontal: spacing.xl,
+  budgetRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: spacing.lg,
-    paddingBottom: 100,
   },
-  listHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.base,
-  },
-  listTitle: {
-    ...typography.sectionHeader,
-    color: colors.textPrimary,
-  },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.figma.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  budgetCard: {
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 16,
-    padding: spacing.base,
-    marginBottom: spacing.base,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  budgetHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  budgetLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  budgetIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  budgetName: {
+  budgetItem: { flex: 1 },
+  budgetLabel: {
     ...typography.body,
-    fontWeight: "600",
-    color: colors.textPrimary,
+    color: designTokens.heroMuted,
+    fontWeight: "500",
+    marginBottom: spacing.xs,
   },
-  budgetAmount: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.textPrimary,
+  budgetDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    marginHorizontal: spacing.lg,
   },
-  progressContainer: {},
   progressBar: {
     height: 8,
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 4,
     overflow: "hidden",
+    marginTop: spacing.lg,
   },
   progressFill: {
     height: "100%",
     borderRadius: 4,
   },
-  progressLabels: {
+
+  // Segmented tabs
+  segmentWrap: {
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.lg,
+  },
+
+  // KPI grid
+  kpiGrid: {
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.lg,
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  kpiCard: {
+    flex: 1,
+    backgroundColor: designTokens.surfaceCard,
+    borderRadius: 16,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: designTokens.border,
+  },
+  kpiLabel: {
+    ...typography.caption,
+    color: designTokens.textSecondary,
+    fontWeight: "600",
+  },
+  kpiValue: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: designTokens.textPrimary,
     marginTop: spacing.xs,
   },
-  progressText: {
+  kpiCaption: {
     ...typography.caption,
-    color: colors.textSecondary,
+    color: designTokens.textMuted,
+    marginTop: spacing.xs,
   },
-  goalsSummaryCard: {
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.base,
-    backgroundColor: "#FFFBEB",
-    borderRadius: 16,
-    padding: spacing.base,
-    borderWidth: 1,
-    borderColor: "#FDE68A",
+
+  // Section
+  section: {
+    marginTop: spacing.xl,
   },
-  goalsSummaryHeader: {
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.md,
   },
-  goalsSummaryTitle: {
+  sectionTitle: {
     ...typography.body,
-    fontWeight: "600",
-    color: colors.textPrimary,
-    flex: 1,
-  },
-  goalsSummaryCount: {
-    fontSize: 18,
+    color: designTokens.textPrimary,
     fontWeight: "700",
-    color: "#D97706",
   },
-  goalsSummarySubtitle: {
+  sectionAction: {
     ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    marginLeft: 32,
+    color: designTokens.primary,
+    fontWeight: "600",
   },
-  goalCard: {
-    backgroundColor: colors.surfaceCard,
+  addBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: designTokens.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 12,
+  },
+  addBtnText: {
+    ...typography.caption,
+    color: designTokens.heroText,
+    fontWeight: "600",
+  },
+
+  // Empty & List cards
+  emptyCard: {
+    marginHorizontal: spacing.xl,
+    padding: spacing["2xl"],
+    backgroundColor: designTokens.surfaceCard,
     borderRadius: 16,
-    padding: spacing.base,
-    marginBottom: spacing.base,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: designTokens.border,
+    alignItems: "center",
   },
-  goalHeader: {
+  emptyCardText: {
+    ...typography.body,
+    color: designTokens.textSecondary,
+    fontWeight: "600",
+    marginTop: spacing.md,
+  },
+  emptyCardSubtext: {
+    ...typography.caption,
+    color: designTokens.textMuted,
+    marginTop: spacing.xs,
+  },
+  listCard: {
+    marginHorizontal: spacing.xl,
+    backgroundColor: designTokens.surfaceCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: designTokens.border,
+    overflow: "hidden",
+  },
+
+  // Goal row
+  goalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: spacing.base,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.borderLight,
+  },
+  goalLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
+    flex: 1,
   },
   goalIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: "center",
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: "center",
-  },
-  goalInfo: {
-    flex: 1,
+    justifyContent: "center",
   },
   goalName: {
     ...typography.body,
+    color: designTokens.textPrimary,
     fontWeight: "600",
-    color: colors.textPrimary,
   },
-  goalDeadline: {
+  goalAmount: {
     ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
+    color: designTokens.textSecondary,
   },
-  goalPercentage: {
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
-  },
-  goalPercentageText: {
-    fontSize: 14,
+  goalPercent: {
+    fontSize: 18,
     fontWeight: "700",
-    color: colors.figma.primary,
+    color: designTokens.textPrimary,
   },
-  goalProgressContainer: {
-    marginTop: spacing.base,
-  },
-  goalProgressBar: {
-    height: 8,
-    backgroundColor: colors.surface,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  goalProgressFill: {
-    height: "100%",
-    backgroundColor: colors.figma.primary,
-    borderRadius: 4,
-  },
-  goalAmounts: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    marginTop: spacing.xs,
-    gap: spacing.xs,
-  },
-  goalCurrent: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.textPrimary,
-  },
-  goalTarget: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: "flex-end",
-  },
-  modalKeyboardView: {
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: colors.surfaceCard,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: spacing.xl,
-    paddingBottom: Platform.OS === "ios" ? spacing["2xl"] : spacing.xl,
-  },
-  modalHeader: {
-    alignItems: "center",
-  },
-  modalTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    position: "relative",
-  },
-  modalCloseBtn: {
-    position: "absolute",
-    right: 0,
-    padding: spacing.xs,
-  },
-  modalHandle: {
-    width: 36,
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: spacing.base,
-  },
-  modalTitle: {
-    ...typography.title,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  modalSubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.base,
-  },
-  modalForm: {},
-  modalLabel: {
-    ...typography.body,
-    fontWeight: "500",
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  modalInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  periodQuickSelect: {
-    marginTop: spacing.base,
-  },
-  quickSelectLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  quickSelectButtons: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  quickSelectBtn: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-  },
-  quickSelectBtnActive: {
-    backgroundColor: colors.figma.primary,
-    borderColor: colors.figma.primary,
-  },
-  quickSelectBtnText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-  quickSelectBtnTextActive: {
-    color: "#FFFFFF",
-  },
-  modalButtons: {
-    flexDirection: "row",
+
+  // Loading skeleton
+  heroSkeleton: {
+    marginHorizontal: spacing.xl,
     marginTop: spacing.lg,
-    gap: spacing.base,
   },
-  modalBtn: {
+
+  // Empty state
+  emptyState: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing["2xl"],
+  },
+  emptyTitle: {
+    ...typography.title,
+    color: designTokens.textPrimary,
+    marginTop: spacing.lg,
+  },
+  emptySubtitle: {
+    ...typography.body,
+    color: designTokens.textMuted,
+    marginTop: spacing.sm,
+  },
+  createWalletBtn: {
+    marginTop: spacing.lg,
+    backgroundColor: designTokens.primary,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.base,
     borderRadius: 12,
+  },
+  createWalletText: {
+    ...typography.button,
+    color: designTokens.heroText,
+  },
+
+  // View all card
+  viewAllCard: {
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    backgroundColor: designTokens.surfaceCard,
+    borderRadius: 16,
     alignItems: "center",
   },
-  modalBtnCancel: {
-    backgroundColor: colors.surface,
+  viewAllText: {
+    ...typography.body,
+    color: designTokens.primary,
+    fontWeight: "600",
   },
-  modalBtnCancelText: {
-    ...typography.button,
-    color: colors.textSecondary,
+
+  // FAB
+  fab: {
+    position: "absolute",
+    bottom: spacing["2xl"],
+    right: spacing.xl,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: designTokens.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: designTokens.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  modalBtnConfirm: {
-    backgroundColor: colors.figma.primary,
-  },
-  modalBtnConfirmText: {
-    ...typography.button,
-    color: "#FFFFFF",
+
+  // Bottom spacer
+  bottomSpacer: {
+    height: 100,
   },
 });

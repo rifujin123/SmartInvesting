@@ -31,8 +31,7 @@ namespace SmartInvestingAPI.Services
             if (wallet == null)
                 throw new KeyNotFoundException("Wallet does not exist or does not belong to current user.");
 
-            var originalRowVersion = wallet.RowVersion;
-            var buyCost = quantity * price + fee;
+            var buyCost = WalletBalanceRules.GetBuyCost(quantity, price, fee);
 
             if (wallet.Balance < buyCost)
                 throw new InvalidOperationException("Insufficient wallet balance.");
@@ -53,6 +52,7 @@ namespace SmartInvestingAPI.Services
                     UserId = userId,
                     AssetId = assetId,
                     TotalQuantity = quantity,
+                    // Average cost uses weighted-average cost basis including buy fees.
                     AvgPrice = buyCost / quantity,
                     CreatedAt = DateTime.UtcNow,
                     IsActive = true
@@ -65,6 +65,7 @@ namespace SmartInvestingAPI.Services
                 var newQuantity = portfolio.TotalQuantity + quantity;
 
                 portfolio.TotalQuantity = newQuantity;
+                // Average cost uses weighted-average cost basis including buy fees.
                 portfolio.AvgPrice = (oldCost + buyCost) / newQuantity;
                 portfolio.LastUpdated = DateTime.UtcNow;
             }
@@ -82,19 +83,11 @@ namespace SmartInvestingAPI.Services
                 PortfolioId = portfolio.Id
             };
 
-            wallet.Balance -= buyCost;
-            wallet.LastUpdated = DateTime.UtcNow;
+            await dbContext.InvestmentOrders.AddAsync(order);
+
+            WalletBalanceRules.ApplyDelta(wallet, WalletBalanceRules.GetBuyDelta(quantity, price, fee));
 
             await dbContext.SaveChangesAsync();
-
-            // Verify RowVersion changed (concurrency check)
-            if (originalRowVersion != null && wallet.RowVersion != null && 
-                !wallet.RowVersion.SequenceEqual(originalRowVersion))
-            {
-                await tx.RollbackAsync();
-                throw new DbUpdateConcurrencyException("Wallet balance was modified by another process. Please retry.");
-            }
-
             await tx.CommitAsync();
 
             return order;
@@ -118,8 +111,6 @@ namespace SmartInvestingAPI.Services
             if (wallet == null)
                 throw new KeyNotFoundException("Wallet does not exist or does not belong to current user.");
 
-            var originalRowVersion = wallet.RowVersion;
-
             var portfolio = await dbContext.Portfolios
                 .FirstOrDefaultAsync(p => p.UserId == userId && p.AssetId == assetId && p.IsActive);
             if (portfolio == null)
@@ -129,8 +120,9 @@ namespace SmartInvestingAPI.Services
                 throw new InvalidOperationException("Sell quantity exceeds current holding quantity.");
 
             var avgBeforeSell = portfolio.AvgPrice;
-            var proceeds = quantity * price - fee;
+            var proceeds = WalletBalanceRules.GetSellProceeds(quantity, price, fee);
             var costBasis = quantity * avgBeforeSell;
+            // Realized P/L uses WAC cost basis; buy fees live in AvgPrice, sell fees reduce proceeds.
             var realizedProfitLoss = proceeds - costBasis;
 
             portfolio.TotalQuantity -= quantity;
@@ -153,20 +145,10 @@ namespace SmartInvestingAPI.Services
                 PortfolioId = portfolio.Id
             };
 
-            wallet.Balance += proceeds;
-            wallet.LastUpdated = DateTime.UtcNow;
+            WalletBalanceRules.ApplyDelta(wallet, WalletBalanceRules.GetSellDelta(quantity, price, fee));
 
             await dbContext.InvestmentOrders.AddAsync(order);
             await dbContext.SaveChangesAsync();
-
-            // Verify RowVersion changed (concurrency check)
-            if (originalRowVersion != null && wallet.RowVersion != null &&
-                !wallet.RowVersion.SequenceEqual(originalRowVersion))
-            {
-                await tx.RollbackAsync();
-                throw new DbUpdateConcurrencyException("Wallet balance was modified by another process. Please retry.");
-            }
-
             await tx.CommitAsync();
 
             return order;

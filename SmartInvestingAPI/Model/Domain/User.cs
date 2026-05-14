@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 
 namespace SmartInvestingAPI.Model.Domain
@@ -10,6 +11,15 @@ namespace SmartInvestingAPI.Model.Domain
     }
     public class User : IdentityUser<Guid>
     {
+        [MaxLength(100)]
+        public string? FirstName { get; set; }
+
+        [MaxLength(100)]
+        public string? LastName { get; set; }
+
+        [MaxLength(500)]
+        public string? AvatarUrl { get; set; }
+
         public RiskTolerance RiskProfile { get; set; }
     }
 }

@@ -24,7 +24,7 @@ export const IllustrationOnboarding3: React.FC<IllustrationOnboarding3Props> = (
       </View>
 
       <View style={styles.loanAmount}>
-        <Text style={styles.loanCurrency}>$</Text>
+        <Text style={styles.loanCurrency}>VND</Text>
         <Text style={styles.loanValue}>50,000</Text>
       </View>
 
@@ -41,7 +41,7 @@ export const IllustrationOnboarding3: React.FC<IllustrationOnboarding3Props> = (
         <View style={styles.loanDivider} />
         <View style={styles.loanDetail}>
           <Text style={styles.loanDetailLabel}>Monthly</Text>
-          <Text style={styles.loanDetailValue}>$1,520</Text>
+          <Text style={styles.loanDetailValue}>1,520 VND</Text>
         </View>
       </View>
 

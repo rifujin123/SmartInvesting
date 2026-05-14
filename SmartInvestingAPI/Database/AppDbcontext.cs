@@ -15,6 +15,7 @@ namespace SmartInvestingAPI.Database
         public DbSet<InvestmentOrder> InvestmentOrders { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Budget> Budgets { get; set; }
+        public DbSet<Goal> Goals { get; set; }
         public DbSet<Asset> Assets { get; set; }
         public DbSet<AssetPricesHistory> AssetsPricesHistory { get; set; }
         public DbSet<IncomeEvent> IncomeEvents { get; set; }
@@ -35,6 +36,11 @@ namespace SmartInvestingAPI.Database
             {
                 entity.HasIndex(b => new { b.UserId, b.CategoryId, b.Month, b.Year })
                     .IsUnique();
+            });
+
+            modelBuilder.Entity<Goal>(entity =>
+            {
+                entity.HasIndex(g => g.UserId);
             });
 
             modelBuilder.Entity<Transaction>(entity =>

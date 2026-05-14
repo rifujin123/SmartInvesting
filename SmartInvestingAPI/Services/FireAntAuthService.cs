@@ -20,8 +20,8 @@ namespace SmartInvestingAPI.Services
             if (!string.IsNullOrEmpty(cachedToken))
                 return cachedToken;
 
-            var email = configuration["FireAnt:Username"];
-            var password = configuration["FireAnt:Password"];
+            var email = configuration["FireAnt:Username"] ?? configuration["FIREANT_USERNAME"];
+            var password = configuration["FireAnt:Password"] ?? configuration["FIREANT_PASSWORD"];
             var loginData = new { email, password, rememberMe = false };
             var response = await httpClient.PostAsJsonAsync("https://api.fireant.vn/authentication/login", loginData);
             var json = await response.Content.ReadAsStringAsync();

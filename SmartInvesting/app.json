@@ -7,13 +7,19 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "scheme": "smartinvesting",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#101828"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Use Face ID to securely sign in to SmartInvesting.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.anonymous.SmartInvesting"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +27,30 @@
         "backgroundColor": "#101828"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "package": "com.anonymous.SmartInvesting"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use Face ID to securely sign in to SmartInvesting."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "96dd6718-fe93-48da-a02e-eb34d2b3dabf"
+      }
     }
   }
 }

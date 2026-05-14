@@ -83,6 +83,23 @@ SmartInvestingUI/.env.test.local
 SmartInvestingUI/.env.production.local
 SmartInvestingUI/.env*.local
 
+# ---------- Claude Code & memory ----------
+.claude/
+.agents/
+
+# ---------- graphify ----------
+.graphify_detect.json
+.graphify_python
+.graphify-out/
+graphify-out/
+
+# ---------- Docs & drafts ----------
+DESIGN_FLOWCHART.md
+INSTALL.md
+PROJECT_CHECKLIST.md
+docs/
+SmartInvesting/docs/
+
 # ---------- OS ----------
 .DS_Store
 Thumbs.db

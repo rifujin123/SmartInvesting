@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, StyleSheet, Animated, Easing, Image } from "react-native";
+import { View, StyleSheet, Animated, Easing, Image } from "react-native";
 import { colors } from "../../../theme/colors";
 
-const CIRCLE_SIZE = 120;
-const PARTICLE_COUNT = 12;
+const LOGO_SIZE = 112;
+const MORPH_SIZE = 172;
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -16,190 +16,180 @@ const LogoImage: React.FC<{ size: number }> = ({ size }) => (
   />
 );
 
-const Particle: React.FC<{ index: number; opacity: Animated.Value; scale: Animated.Value }> = ({
-  index,
-  opacity,
-  scale,
-}) => {
-  const angle = (index / PARTICLE_COUNT) * Math.PI * 2;
-  const radius = 80;
-  const x = Math.cos(angle) * radius;
-  const y = Math.sin(angle) * radius;
-
-  return (
-    <Animated.View
-      style={[
-        styles.particle,
-        {
-          opacity,
-          transform: [
-            { translateX: x },
-            { translateY: y },
-            { scale },
-          ],
-        },
-      ]}
-    />
-  );
-};
-
-const DotsIndicator: React.FC<{ activeIndex: Animated.Value; count: number }> = ({
-  activeIndex,
-  count,
-}) => {
-  return (
-    <View style={styles.dotsContainer}>
-      {Array.from({ length: count }).map((_, i) => (
-        <AnimatedDot key={i} activeIndex={activeIndex} index={i} />
-      ))}
-    </View>
-  );
-};
-
-const AnimatedDot: React.FC<{ activeIndex: Animated.Value; index: number }> = ({
-  activeIndex,
-  index,
-}) => {
-  const opacity = activeIndex.interpolate({
-    inputRange: [index - 1, index, index + 1],
-    outputRange: [0.3, 1, 0.3],
-    extrapolate: "clamp",
-  });
-
-  return <Animated.View style={[styles.dot, { opacity }]} />;
-};
-
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
-  const logoScale = useRef(new Animated.Value(0)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const particleOpacity = useRef(new Animated.Value(0)).current;
-  const particleScale = useRef(new Animated.Value(0.5)).current;
-  const ringScale = useRef(new Animated.Value(0)).current;
-  const ringOpacity = useRef(new Animated.Value(0)).current;
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const textTranslateY = useRef(new Animated.Value(20)).current;
   const fadeOut = useRef(new Animated.Value(1)).current;
+  const seedOpacity = useRef(new Animated.Value(0)).current;
+  const seedScale = useRef(new Animated.Value(0.35)).current;
+  const morphScaleX = useRef(new Animated.Value(1)).current;
+  const morphScaleY = useRef(new Animated.Value(1)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.72)).current;
+  const ringScale = useRef(new Animated.Value(0.72)).current;
+  const ringOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let finishTimer: ReturnType<typeof setTimeout>;
+
+    const finish = () => {
+      finishTimer = setTimeout(() => {
+        Animated.timing(fadeOut, {
+          toValue: 0,
+          duration: 480,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (finished) {
+            onFinish();
+          }
+        });
+      }, 1050);
+    };
+
     const animationSequence = Animated.sequence([
       Animated.parallel([
-        Animated.spring(logoScale, {
+        Animated.timing(seedOpacity, {
           toValue: 1,
-          tension: 50,
-          friction: 7,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(seedScale, {
+          toValue: 1,
+          tension: 90,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(morphScaleX, {
+          toValue: 1.42,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(morphScaleY, {
+          toValue: 0.72,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.spring(morphScaleX, {
+          toValue: 1,
+          tension: 105,
+          friction: 6,
+          useNativeDriver: true,
+        }),
+        Animated.spring(morphScaleY, {
+          toValue: 1,
+          tension: 105,
+          friction: 6,
           useNativeDriver: true,
         }),
         Animated.timing(logoOpacity, {
           toValue: 1,
-          duration: 400,
-          easing: Easing.out(Easing.ease),
+          duration: 320,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-      ]),
-      Animated.parallel([
-        Animated.timing(particleOpacity, {
-          toValue: 0.8,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(particleScale, {
+        Animated.spring(logoScale, {
           toValue: 1,
-          tension: 100,
-          friction: 10,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.spring(ringScale, {
-          toValue: 1,
-          tension: 40,
+          tension: 80,
           friction: 8,
           useNativeDriver: true,
         }),
-        Animated.timing(ringOpacity, {
-          toValue: 0.5,
-          duration: 500,
-          useNativeDriver: true,
-        }),
       ]),
       Animated.parallel([
-        Animated.timing(textOpacity, {
-          toValue: 1,
-          duration: 500,
+        Animated.timing(ringOpacity, {
+          toValue: 0.52,
+          duration: 160,
+          easing: Easing.out(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.spring(textTranslateY, {
-          toValue: 0,
-          tension: 80,
-          friction: 10,
+        Animated.timing(ringScale, {
+          toValue: 1.85,
+          duration: 740,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
+        Animated.sequence([
+          Animated.delay(160),
+          Animated.timing(ringOpacity, {
+            toValue: 0,
+            duration: 560,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
       ]),
     ]);
 
-    animationSequence.start(() => {
-      const timer = setTimeout(() => {
-        Animated.timing(fadeOut, {
-          toValue: 0,
-          duration: 500,
-          easing: Easing.in(Easing.ease),
-          useNativeDriver: true,
-        }).start(() => onFinish());
-      }, 1500);
-      return () => clearTimeout(timer);
+    animationSequence.start(({ finished }) => {
+      if (finished) {
+        finish();
+      }
     });
-  }, [logoScale, logoOpacity, particleOpacity, particleScale, ringScale, ringOpacity, textOpacity, textTranslateY, fadeOut, onFinish]);
+
+    return () => {
+      animationSequence.stop();
+      clearTimeout(finishTimer);
+    };
+  }, [
+    fadeOut,
+    logoOpacity,
+    logoScale,
+    morphScaleX,
+    morphScaleY,
+    onFinish,
+    ringOpacity,
+    ringScale,
+    seedOpacity,
+    seedScale,
+  ]);
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeOut }]}>
+      <View style={styles.glowPrimary} />
+      <View style={styles.glowAccent} />
+      <View style={styles.gridOverlay} />
+
       <View style={styles.content}>
-        <View style={styles.logoContainer}>
+        <View style={styles.logoStage}>
           <Animated.View
             style={[
-              styles.ring,
+              styles.pulseRing,
               {
-                transform: [{ scale: ringScale }],
                 opacity: ringOpacity,
+                transform: [{ scale: ringScale }],
               },
             ]}
           />
-          {Array.from({ length: PARTICLE_COUNT }).map((_, i) => (
-            <Particle
-              key={i}
-              index={i}
-              opacity={particleOpacity}
-              scale={particleScale}
-            />
-          ))}
           <Animated.View
             style={[
-              styles.logo,
+              styles.morphOrb,
               {
-                transform: [{ scale: logoScale }],
-                opacity: logoOpacity,
+                opacity: seedOpacity,
+                transform: [
+                  { scale: seedScale },
+                  { scaleX: morphScaleX },
+                  { scaleY: morphScaleY },
+                ],
               },
             ]}
           >
-            <LogoImage size={80} />
+            <View style={styles.logoPlate}>
+              <Animated.View
+                style={{
+                  opacity: logoOpacity,
+                  transform: [{ scale: logoScale }],
+                }}
+              >
+                <LogoImage size={LOGO_SIZE} />
+              </Animated.View>
+            </View>
           </Animated.View>
         </View>
-
-        <Animated.View
-          style={[
-            styles.textContainer,
-            {
-              opacity: textOpacity,
-              transform: [{ translateY: textTranslateY }],
-            },
-          ]}
-        >
-          <Text style={styles.appName}>SmartInvesting</Text>
-          <Text style={styles.tagline}>Grow your wealth, plan your future</Text>
-        </Animated.View>
-      </View>
-
-      <View style={styles.bottomDots}>
-        <DotsIndicator activeIndex={new Animated.Value(0)} count={3} />
       </View>
     </Animated.View>
   );
@@ -208,77 +198,72 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0836e6",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: colors.figma.appBg,
+  },
+  glowPrimary: {
+    position: "absolute",
+    width: 310,
+    height: 310,
+    borderRadius: 155,
+    top: -80,
+    right: -110,
+    backgroundColor: "rgba(69, 110, 254, 0.24)",
+  },
+  glowAccent: {
+    position: "absolute",
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    bottom: -70,
+    left: -90,
+    backgroundColor: "rgba(19, 201, 153, 0.18)",
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.22,
+    backgroundColor: "rgba(255, 255, 255, 0.015)",
   },
   content: {
+    width: "100%",
     alignItems: "center",
+    paddingHorizontal: 32,
   },
-  logoContainer: {
-    width: 200,
-    height: 200,
+  logoStage: {
+    width: 240,
+    height: 240,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
   },
-  logo: {
-    width: CIRCLE_SIZE,
-    height: CIRCLE_SIZE,
-    borderRadius: CIRCLE_SIZE / 2,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 10,
-  },
-  ring: {
+  pulseRing: {
     position: "absolute",
-    width: CIRCLE_SIZE + 20,
-    height: CIRCLE_SIZE + 20,
-    borderRadius: (CIRCLE_SIZE + 20) / 2,
+    width: MORPH_SIZE,
+    height: MORPH_SIZE,
+    borderRadius: MORPH_SIZE / 2,
     borderWidth: 2,
-    borderColor: "#FFFFFF",
-    opacity: 0.5,
+    borderColor: colors.figma.accent,
   },
-  particle: {
-    position: "absolute",
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FFFFFF",
-  },
-  textContainer: {
+  morphOrb: {
+    width: MORPH_SIZE,
+    height: MORPH_SIZE,
+    borderRadius: 42,
     alignItems: "center",
-    marginTop: 32,
+    justifyContent: "center",
+    backgroundColor: colors.figma.primary,
+    shadowColor: colors.figma.primary,
+    shadowOpacity: 0.45,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 14,
   },
-  appName: {
-    fontSize: 28,
-    fontWeight: "600",
-    color: "#FFFFFF",
-    letterSpacing: 0.5,
-  },
-  tagline: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginTop: 8,
-    letterSpacing: 0.3,
-  },
-  bottomDots: {
-    position: "absolute",
-    bottom: 60,
-  },
-  dotsContainer: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  logoPlate: {
+    width: 140,
+    height: 140,
+    borderRadius: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
   },
 });

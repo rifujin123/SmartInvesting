@@ -1,0 +1,171 @@
+export type AssetType = "stock" | "etf" | "gold";
+
+export interface InvestableAsset {
+  id: string;
+  type: AssetType;
+  name: string;
+  symbol: string;
+  provider: string;
+  price: number;
+  changePercent?: number;
+  description?: string;
+}
+
+export const assetTypeLabels: Record<AssetType, string> = {
+  stock: "Stock",
+  etf: "ETF",
+  gold: "Gold",
+};
+
+export const investableAssets: InvestableAsset[] = [
+  {
+    id: "stock-aapl",
+    type: "stock",
+    name: "Apple Inc.",
+    symbol: "AAPL",
+    provider: "NASDAQ",
+    price: 245.5,
+    changePercent: 1.24,
+    description: "Consumer technology and services company.",
+  },
+  {
+    id: "stock-msft",
+    type: "stock",
+    name: "Microsoft Corporation",
+    symbol: "MSFT",
+    provider: "NASDAQ",
+    price: 482.11,
+    changePercent: 0.86,
+    description: "Cloud, productivity, and enterprise software leader.",
+  },
+  {
+    id: "stock-nvda",
+    type: "stock",
+    name: "NVIDIA Corporation",
+    symbol: "NVDA",
+    provider: "NASDAQ",
+    price: 178.39,
+    changePercent: 2.18,
+    description: "AI chips, GPUs, and accelerated computing.",
+  },
+  {
+    id: "stock-tsla",
+    type: "stock",
+    name: "Tesla Inc.",
+    symbol: "TSLA",
+    provider: "NASDAQ",
+    price: 421.04,
+    changePercent: -0.74,
+    description: "Electric vehicles, energy storage, and charging network.",
+  },
+  {
+    id: "stock-amzn",
+    type: "stock",
+    name: "Amazon.com Inc.",
+    symbol: "AMZN",
+    provider: "NASDAQ",
+    price: 236.89,
+    changePercent: 1.03,
+    description: "E-commerce, cloud infrastructure, and digital services.",
+  },
+  {
+    id: "etf-spy",
+    type: "etf",
+    name: "SPDR S&P 500 ETF Trust",
+    symbol: "SPY",
+    provider: "State Street Global Advisors",
+    price: 675.21,
+    changePercent: 0.42,
+    description: "Broad exposure to large-cap U.S. stocks.",
+  },
+  {
+    id: "etf-voo",
+    type: "etf",
+    name: "Vanguard S&P 500 ETF",
+    symbol: "VOO",
+    provider: "Vanguard",
+    price: 621.44,
+    changePercent: 0.39,
+    description: "Low-cost S&P 500 index ETF.",
+  },
+  {
+    id: "etf-qqq",
+    type: "etf",
+    name: "Invesco QQQ Trust",
+    symbol: "QQQ",
+    provider: "Invesco",
+    price: 598.17,
+    changePercent: 0.91,
+    description: "Tracks Nasdaq-100 growth and technology names.",
+  },
+  {
+    id: "etf-vti",
+    type: "etf",
+    name: "Vanguard Total Stock Market ETF",
+    symbol: "VTI",
+    provider: "Vanguard",
+    price: 332.62,
+    changePercent: 0.36,
+    description: "Total U.S. equity market exposure.",
+  },
+  {
+    id: "etf-iau",
+    type: "etf",
+    name: "iShares Gold Trust",
+    symbol: "IAU",
+    provider: "BlackRock iShares",
+    price: 72.48,
+    changePercent: -0.18,
+    description: "Gold-backed ETF for commodity exposure.",
+  },
+  {
+    id: "gold-pamp",
+    type: "gold",
+    name: "PAMP Suisse Gold Bar",
+    symbol: "PAMP",
+    provider: "PAMP Suisse",
+    price: 4350.0,
+    changePercent: 0.22,
+    description: "Premium minted gold bars from Switzerland.",
+  },
+  {
+    id: "gold-perth",
+    type: "gold",
+    name: "Perth Mint Gold",
+    symbol: "PMGT",
+    provider: "The Perth Mint",
+    price: 4328.5,
+    changePercent: 0.19,
+    description: "Government-backed Australian gold provider.",
+  },
+  {
+    id: "gold-royal-mint",
+    type: "gold",
+    name: "Royal Mint Gold",
+    symbol: "RMG",
+    provider: "The Royal Mint",
+    price: 4335.75,
+    changePercent: 0.21,
+    description: "UK Royal Mint physical and digital gold products.",
+  },
+  {
+    id: "gold-valcambi",
+    type: "gold",
+    name: "Valcambi Gold Bar",
+    symbol: "VAL",
+    provider: "Valcambi Suisse",
+    price: 4341.2,
+    changePercent: -0.08,
+    description: "Swiss refined investment-grade gold bars.",
+  },
+  {
+    id: "gold-us-mint",
+    type: "gold",
+    name: "American Eagle Gold Coin",
+    symbol: "AGE",
+    provider: "United States Mint",
+    price: 4495.0,
+    changePercent: 0.15,
+    description: "Popular U.S. Mint gold bullion coin.",
+  },
+];

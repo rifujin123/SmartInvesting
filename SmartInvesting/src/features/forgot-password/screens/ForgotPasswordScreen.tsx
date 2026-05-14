@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,63 +8,28 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Animated,
-  LayoutChangeEvent,
+  ActivityIndicator,
 } from "react-native";
 
 interface ForgotPasswordScreenProps {
   onBackPress: () => void;
-  onSendCode: () => void;
+  onSendResetLink: (email: string) => void | Promise<void>;
+  isSubmitting?: boolean;
+  serverError?: string | null;
+  clearServerError?: () => void;
 }
-
-type VerificationMethod = "email" | "phone";
 
 export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
   onBackPress,
-  onSendCode,
+  onSendResetLink,
+  isSubmitting = false,
+  serverError = null,
+  clearServerError,
 }) => {
-  const [method, setMethod] = useState<VerificationMethod>("email");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [error, setError] = useState<string>("");
   const [touched, setTouched] = useState(false);
-  const [methodTabWidth, setMethodTabWidth] = useState(0);
-
-  const methodSwitcherPosition = useRef(new Animated.Value(0)).current;
-  const contentOpacity = useRef(new Animated.Value(1)).current;
-
-  const handleMethodContainerLayout = (event: LayoutChangeEvent) => {
-    const { width } = event.nativeEvent.layout;
-    const tabWidth = width / 2;
-    setMethodTabWidth(tabWidth);
-  };
-
-  useEffect(() => {
-    if (methodTabWidth === 0) return;
-    
-    const targetPosition = method === "phone" ? 1 : 0;
-
-    Animated.sequence([
-      Animated.timing(contentOpacity, {
-        toValue: 0,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.parallel([
-        Animated.spring(methodSwitcherPosition, {
-          toValue: targetPosition,
-          tension: 150,
-          friction: 12,
-          useNativeDriver: true,
-        }),
-        Animated.timing(contentOpacity, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-  }, [method, methodTabWidth]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const validateEmail = (value: string): string | undefined => {
     if (!value.trim()) {
@@ -77,60 +42,21 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
     return undefined;
   };
 
-  const validatePhone = (value: string): string | undefined => {
-    if (!value.trim()) {
-      return "Phone number is required";
-    }
-    const phoneRegex = /^[\d\s\-+()]{10,}$/;
-    if (!phoneRegex.test(value)) {
-      return "Please enter a valid phone number";
-    }
-    return undefined;
-  };
-
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setTouched(true);
-    
-    if (method === "email") {
-      const emailError = validateEmail(email);
-      if (emailError) {
-        setError(emailError);
-        return;
-      }
-      setError("");
-      onSendCode();
-    } else {
-      const phoneError = validatePhone(phone);
-      if (phoneError) {
-        setError(phoneError);
-        return;
-      }
-      setError("");
-      onSendCode();
-    }
-  };
+    const emailError = validateEmail(email);
 
-  const handleMethodChange = (newMethod: VerificationMethod) => {
-    setMethod(newMethod);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+
     setError("");
-    setTouched(false);
-  };
+    clearServerError?.();
 
-  const getCurrentValue = () => method === "email" ? email : phone;
-  
-  const setCurrentValue = (value: string) => {
-    if (method === "email") {
-      setEmail(value);
-      if (touched) setError(validateEmail(value) || "");
-    } else {
-      setPhone(value);
-      if (touched) setError(validatePhone(value) || "");
-    }
+    await onSendResetLink(email.trim());
+    setSuccessMessage("If an account exists for that email, a password reset link has been sent.");
   };
-
-  const getPlaceholder = () => method === "email" ? "Enter your email address" : "Enter your phone number";
-  
-  const getKeyboardType = () => method === "email" ? "email-address" : "phone-pad";
 
   return (
     <KeyboardAvoidingView
@@ -149,101 +75,60 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
         <View style={styles.header}>
           <Text style={styles.titleText}>Reset Password</Text>
           <Text style={styles.subtitleText}>
-            Enter your registered email or phone number to receive a verification code
+            Enter your registered email address and we'll send you a password reset link.
           </Text>
         </View>
 
-        <View style={styles.methodSelector} onLayout={handleMethodContainerLayout}>
-          <Animated.View
-            style={[
-              styles.methodSwitcher,
-              {
-                width: methodTabWidth > 0 ? methodTabWidth - 4 : undefined,
-                transform: [
-                  {
-                    translateX: methodSwitcherPosition.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, methodTabWidth > 0 ? methodTabWidth : 96],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          />
-          <TouchableOpacity
-            style={styles.methodButton}
-            onPress={() => handleMethodChange("email")}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.methodText, method === "email" && styles.methodTextActive]}>
-              Email
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.methodButton}
-            onPress={() => handleMethodChange("phone")}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.methodText, method === "phone" && styles.methodTextActive]}>
-              SMS
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <Animated.View
-          style={[
-            styles.inputGroup,
-            {
-              opacity: contentOpacity,
-            },
-          ]}
-        >
-          <Text style={styles.label}>
-            {method === "email" ? "Email Address" : "Phone Number"}
-          </Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email Address</Text>
           <TextInput
-            style={[styles.input, error && styles.inputError]}
-            placeholder={getPlaceholder()}
+            style={[styles.input, (error || serverError) && styles.inputError]}
+            placeholder="Enter your email address"
             placeholderTextColor="#94A3B8"
-            value={getCurrentValue()}
-            onChangeText={setCurrentValue}
-            keyboardType={getKeyboardType()}
+            value={email}
+            onChangeText={(value) => {
+              setEmail(value);
+              setSuccessMessage(null);
+              clearServerError?.();
+              if (touched) {
+                setError(validateEmail(value) || "");
+              }
+            }}
+            keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
           />
           {error ? (
             <Text style={styles.helperText}>{error}</Text>
+          ) : serverError ? (
+            <Text style={styles.helperText}>{serverError}</Text>
+          ) : successMessage ? (
+            <Text style={styles.successText}>{successMessage}</Text>
           ) : (
-            <Text style={styles.helperHint}>
-              {method === "email"
-                ? "We'll send a verification link to this email"
-                : "We'll send a verification code via SMS"}
-            </Text>
+            <Text style={styles.helperHint}>We'll email a reset link to this address.</Text>
           )}
-        </Animated.View>
+        </View>
 
         <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
+          style={[styles.continueButton, isSubmitting && styles.continueButtonDisabled]}
+          onPress={() => {
+            void handleContinue();
+          }}
           activeOpacity={0.85}
+          disabled={isSubmitting}
         >
-          <Text style={styles.continueButtonText}>Send Verification Code</Text>
+          {isSubmitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.continueButtonText}>Send Reset Link</Text>
+          )}
         </TouchableOpacity>
 
-        <Animated.View
-          style={[
-            styles.infoContainer,
-            {
-              opacity: contentOpacity,
-            },
-          ]}
-        >
+        <View style={styles.infoContainer}>
           <Text style={styles.infoText}>
-            {method === "email"
-              ? "Didn't receive the email? Check your spam folder or try SMS verification instead."
-              : "SMS may incur carrier charges. Alternatively, use email verification."}
+            Check your inbox and spam folder. The reset link will let you choose a new password.
           </Text>
-        </Animated.View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -288,44 +173,6 @@ const styles = StyleSheet.create({
     color: "#64748B",
     lineHeight: 24,
   },
-  methodSelector: {
-    flexDirection: "row",
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 28,
-  },
-  methodSwitcher: {
-    position: "absolute",
-    top: 4,
-    left: 4,
-    minWidth: 96,
-    height: 40,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 0,
-  },
-  methodButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    zIndex: 1,
-  },
-  methodText: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#64748B",
-  },
-  methodTextActive: {
-    color: "#0836e6",
-    fontWeight: "600",
-  },
   inputGroup: {
     marginBottom: 24,
   },
@@ -361,6 +208,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginLeft: 4,
   },
+  successText: {
+    fontSize: 13,
+    color: "#15803D",
+    marginTop: 6,
+    marginLeft: 4,
+  },
   continueButton: {
     backgroundColor: "#0836e6",
     borderRadius: 12,
@@ -371,6 +224,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  continueButtonDisabled: {
+    opacity: 0.7,
   },
   continueButtonText: {
     fontSize: 17,

@@ -1,9 +1,13 @@
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using SmartInvestingAPI.Model.Domain;
 using SmartInvestingAPI.Model.DTOs;
 using SmartInvestingAPI.Model.Wrappers;
 using SmartInvestingAPI.Repositories;
+using SmartInvestingAPI.Services;
 
 namespace SmartInvestingAPI.Controllers
 {
@@ -11,24 +15,30 @@ namespace SmartInvestingAPI.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly UserManager<IdentityUser<Guid>> userManager;
-        private readonly SignInManager<IdentityUser<Guid>> signInManager;
+        private readonly UserManager<User> userManager;
+        private readonly SignInManager<User> signInManager;
         private readonly RoleManager<IdentityRole<Guid>> roleManager;
         private readonly ITokenRepository tokenRepository;
         private readonly IRefreshTokenRepository refreshTokenRepository;
+        private readonly IEmailService emailService;
+        private readonly IConfiguration configuration;
 
         public AuthController(
-            UserManager<IdentityUser<Guid>> userManager,
-            SignInManager<IdentityUser<Guid>> signInManager,
+            UserManager<User> userManager,
+            SignInManager<User> signInManager,
             RoleManager<IdentityRole<Guid>> roleManager,
             ITokenRepository tokenRepository,
-            IRefreshTokenRepository refreshTokenRepository)
+            IRefreshTokenRepository refreshTokenRepository,
+            IEmailService emailService,
+            IConfiguration configuration)
         {
             this.userManager = userManager;
             this.signInManager = signInManager;
             this.roleManager = roleManager;
             this.tokenRepository = tokenRepository;
             this.refreshTokenRepository = refreshTokenRepository;
+            this.emailService = emailService;
+            this.configuration = configuration;
         }
 
         [HttpPost("register")]
@@ -49,7 +59,7 @@ namespace SmartInvestingAPI.Controllers
                 return BadRequest(ApiResponse.Fail("Username already taken"));
             }
 
-            var user = new IdentityUser<Guid>
+            var user = new User
             {
                 Email = request.Email,
                 UserName = request.Username
@@ -109,6 +119,54 @@ namespace SmartInvestingAPI.Controllers
             }));
         }
 
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ApiResponse.Fail(GetModelStateErrors()));
+
+            var user = await userManager.FindByEmailAsync(request.Email);
+            if (user != null && !string.IsNullOrWhiteSpace(user.Email))
+            {
+                var rawToken = await userManager.GeneratePasswordResetTokenAsync(user);
+                var encodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes(rawToken));
+                var resetUrl = BuildResetPasswordUrl(user.Email, encodedToken);
+                await emailService.SendPasswordResetEmailAsync(user.Email, resetUrl);
+            }
+
+            return Ok(ApiResponse.Ok("If an account exists for that email, a password reset link has been sent."));
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ApiResponse.Fail(GetModelStateErrors()));
+
+            var user = await userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+                return BadRequest(ApiResponse.Fail("Invalid password reset request."));
+
+            string decodedToken;
+            try
+            {
+                decodedToken = Encoding.UTF8.GetString(Convert.FromBase64String(request.Token));
+            }
+            catch (FormatException)
+            {
+                return BadRequest(ApiResponse.Fail("Invalid password reset token."));
+            }
+
+            var result = await userManager.ResetPasswordAsync(user, decodedToken, request.NewPassword);
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors.Select(e => e.Description).ToList();
+                return BadRequest(ApiResponse<object>.Fail(errors));
+            }
+
+            return Ok(ApiResponse.Ok("Password has been reset successfully."));
+        }
+
         [HttpPost("refresh")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
         {
@@ -116,7 +174,7 @@ namespace SmartInvestingAPI.Controllers
                 return BadRequest(ApiResponse.Fail(GetModelStateErrors()));
 
             var storedToken = await refreshTokenRepository.GetByTokenAsync(request.RefreshToken);
-            if (storedToken == null || !storedToken.IsActive)
+            if (storedToken == null || storedToken.IsRevoked || storedToken.ExpiresAt <= DateTime.UtcNow)
                 return Unauthorized(ApiResponse.Fail("Invalid or expired refresh token."));
 
             var user = await userManager.FindByIdAsync(storedToken.UserId.ToString());
@@ -146,14 +204,37 @@ namespace SmartInvestingAPI.Controllers
 
         [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto? request)
+        public async Task<IActionResult> Logout([FromBody] LogoutRequestDto? request)
         {
-            if (request != null && !string.IsNullOrEmpty(request.RefreshToken))
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdClaim, out var userId))
             {
-                await refreshTokenRepository.RevokeAsync(request.RefreshToken);
+                return Unauthorized(ApiResponse.Fail("Invalid user context."));
+            }
+
+            if (request?.AllSessions == true)
+            {
+                await refreshTokenRepository.RevokeAllByUserIdAsync(userId);
+                return Ok(ApiResponse.Ok("Logged out successfully."));
+            }
+
+            if (!string.IsNullOrWhiteSpace(request?.RefreshToken))
+            {
+                var storedToken = await refreshTokenRepository.GetByTokenAsync(request.RefreshToken);
+                if (storedToken != null && storedToken.UserId == userId && !storedToken.IsRevoked)
+                {
+                    await refreshTokenRepository.RevokeAsync(request.RefreshToken);
+                }
             }
 
             return Ok(ApiResponse.Ok("Logged out successfully."));
+        }
+
+        private string BuildResetPasswordUrl(string email, string encodedToken)
+        {
+            var resetPasswordUrlBase = configuration["Frontend:ResetPasswordUrlBase"] ?? "smartinvesting://reset-password";
+            var separator = resetPasswordUrlBase.Contains('?') ? '&' : '?';
+            return $"{resetPasswordUrlBase}{separator}email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(encodedToken)}";
         }
 
         private string GetModelStateErrors()

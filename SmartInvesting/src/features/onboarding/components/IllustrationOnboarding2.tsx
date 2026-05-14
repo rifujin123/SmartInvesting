@@ -21,7 +21,7 @@ export const IllustrationOnboarding2: React.FC<IllustrationOnboarding2Props> = (
       <View style={styles.cardBody}>
         <Text style={styles.cardLabel}>Send Money</Text>
         <View style={styles.amountContainer}>
-          <Text style={styles.currency}>$</Text>
+          <Text style={styles.currency}>VND</Text>
           <Text style={styles.amount}>2,450</Text>
         </View>
 
@@ -53,7 +53,7 @@ export const IllustrationOnboarding2: React.FC<IllustrationOnboarding2Props> = (
         <View style={styles.floatingLine} />
         <View style={styles.floatingLineShort} />
       </View>
-      <Text style={styles.floatingAmount}>+$120</Text>
+      <Text style={styles.floatingAmount}>+120 VND</Text>
     </View>
 
     <View style={[styles.floatingCard, styles.floatingCard2]}>
@@ -69,7 +69,7 @@ export const IllustrationOnboarding2: React.FC<IllustrationOnboarding2Props> = (
 
     {/* Coins */}
     <View style={[styles.coin, styles.coin1]}>
-      <Text style={styles.coinText}>$</Text>
+      <Text style={styles.coinText}>VND</Text>
     </View>
     <View style={[styles.coin, styles.coin2]}>
       <Text style={styles.coinText}>€</Text>

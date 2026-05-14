@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { formatCurrency, formatNumber } from "../../../shared/utils/formatCurrency";
 import {
   View,
   Text,
@@ -12,10 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../theme/colors";
 import { spacing } from "../../../theme/spacing";
 import { typography } from "../../../theme/typography";
-
-interface DashboardScreenProps {
-  onLogout?: () => void;
-}
+import { AppHeader } from "../../../shared/components";
+import { AssetType } from "../../investing/data/investableAssets";
 
 interface Asset {
   id: string;
@@ -23,7 +22,7 @@ interface Asset {
   symbol: string;
   value: number;
   change: number;
-  type: "stock" | "etf" | "gold";
+  type: AssetType;
 }
 
 const mockAssets: Asset[] = [
@@ -32,27 +31,20 @@ const mockAssets: Asset[] = [
   { id: "3", name: "Gold", symbol: "XAU", value: 3200.0, change: -0.45, type: "gold" },
 ];
 
-export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onLogout }) => {
+interface DashboardScreenProps {
+  onBuyAsset?: (type: AssetType) => void;
+}
+
+export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBuyAsset }) => {
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [fundAmount, setFundAmount] = useState("");
-  const [showBuyModal, setShowBuyModal] = useState(false);
-  const [selectedAssetType, setSelectedAssetType] = useState<"stock" | "etf" | "gold">("stock");
 
   const totalAssets = 28450.0;
   const totalProfit = 1250.75;
   const profitPercentage = 4.59;
-  const walletBalance = 5000.0;
-
   const handleAddFunds = () => {
     setShowAddFunds(false);
     setFundAmount("");
-  };
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
   };
 
   const getTypeIcon = (type: Asset["type"]): keyof typeof Ionicons.glyphMap => {
@@ -82,16 +74,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onLogout }) =>
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>John Doe</Text>
-          </View>
-          <TouchableOpacity style={styles.profileButton} activeOpacity={0.7}>
-            <Ionicons name="person" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+        <AppHeader />
 
         {/* Wallet Card */}
         <View style={styles.walletCard}>
@@ -102,11 +85,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onLogout }) =>
               <Text style={styles.walletActionText}>Add</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.walletBalance}>${totalAssets.toLocaleString()}</Text>
+          <Text style={styles.walletBalance}>{formatCurrency(totalAssets)}</Text>
           <View style={styles.walletStats}>
             <View style={styles.walletStat}>
               <Text style={styles.walletStatLabel}>Profit</Text>
-              <Text style={styles.walletStatValue}>+${totalProfit.toLocaleString()}</Text>
+              <Text style={styles.walletStatValue}>+{formatNumber(totalProfit)} VND</Text>
             </View>
             <View style={styles.walletStatDivider} />
             <View style={styles.walletStat}>
@@ -120,19 +103,19 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onLogout }) =>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickAction} onPress={() => { setSelectedAssetType("stock"); setShowBuyModal(true); }} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.quickAction} onPress={() => onBuyAsset?.("stock")} activeOpacity={0.7}>
               <View style={[styles.quickActionIcon, { backgroundColor: "#DCFCE7" }]}>
                 <Ionicons name="trending-up" size={24} color="#16A34A" />
               </View>
               <Text style={styles.quickActionLabel}>Buy Stock</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => { setSelectedAssetType("etf"); setShowBuyModal(true); }} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.quickAction} onPress={() => onBuyAsset?.("etf")} activeOpacity={0.7}>
               <View style={[styles.quickActionIcon, { backgroundColor: "#DBEAFE" }]}>
                 <Ionicons name="bar-chart" size={24} color="#2563EB" />
               </View>
               <Text style={styles.quickActionLabel}>Buy ETF</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => { setSelectedAssetType("gold"); setShowBuyModal(true); }} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.quickAction} onPress={() => onBuyAsset?.("gold")} activeOpacity={0.7}>
               <View style={[styles.quickActionIcon, { backgroundColor: "#FEF3C7" }]}>
                 <Ionicons name="diamond" size={24} color="#D97706" />
               </View>
@@ -162,7 +145,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onLogout }) =>
                   </View>
                 </View>
                 <View style={styles.assetRight}>
-                  <Text style={styles.assetValue}>${asset.value.toLocaleString()}</Text>
+                  <Text style={styles.assetValue}>{formatCurrency(asset.value)}</Text>
                   <Text style={[styles.assetChange, { color: asset.change >= 0 ? colors.success : colors.loss }]}>
                     {asset.change >= 0 ? "+" : ""}{asset.change}%
                   </Text>
@@ -181,7 +164,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onLogout }) =>
             <Text style={styles.modalTitle}>Add Funds</Text>
             <Text style={styles.modalSubtitle}>Enter amount to add to your wallet</Text>
             <View style={styles.modalInputContainer}>
-              <Text style={styles.modalCurrency}>$</Text>
+              <Text style={styles.modalCurrency}>VND</Text>
               <TextInput
                 style={styles.modalInput}
                 placeholder="0.00"
@@ -202,25 +185,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onLogout }) =>
           </View>
         </View>
       </Modal>
-
-      {/* Buy Modal */}
-      <Modal visible={showBuyModal} transparent animationType="slide" onRequestClose={() => setShowBuyModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.buyModalContent}>
-            <View style={styles.buyModalHandle} />
-            <Text style={styles.buyModalTitle}>
-              Buy {selectedAssetType === "stock" ? "Stock" : selectedAssetType === "etf" ? "ETF" : "Gold"}
-            </Text>
-            <View style={styles.balanceInfo}>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
-              <Text style={styles.balanceValue}>${walletBalance.toLocaleString()}</Text>
-            </View>
-            <TouchableOpacity style={[styles.modalBtn, styles.modalBtnConfirm, styles.fullWidth]} onPress={() => setShowBuyModal(false)}>
-              <Text style={styles.modalBtnConfirmText}>Continue to Search</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -229,33 +193,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surface,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing["2xl"] + spacing.xl,
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.surfaceCard,
-  },
-  headerLeft: {},
-  greeting: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  userName: {
-    ...typography.title,
-    color: colors.textPrimary,
-    marginTop: 2,
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.figma.primary,
-    justifyContent: "center",
-    alignItems: "center",
   },
   walletCard: {
     marginHorizontal: spacing.xl,
@@ -487,51 +424,5 @@ const styles = StyleSheet.create({
   modalBtnConfirmText: {
     ...typography.button,
     color: "#FFFFFF",
-  },
-  fullWidth: {
-    width: "100%",
-  },
-  buyModalContent: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.surfaceCard,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: spacing.xl,
-    paddingTop: spacing.base,
-  },
-  buyModalHandle: {
-    width: 36,
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: spacing.base,
-  },
-  buyModalTitle: {
-    ...typography.title,
-    color: colors.textPrimary,
-    textAlign: "center",
-    marginBottom: spacing.lg,
-  },
-  balanceInfo: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.base,
-    marginBottom: spacing.lg,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  balanceLabel: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  balanceValue: {
-    ...typography.body,
-    fontWeight: "600",
-    color: colors.textPrimary,
   },
 });

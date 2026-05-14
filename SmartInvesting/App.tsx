@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RootNavigator } from "./src/shared/navigation";
@@ -25,6 +25,14 @@ export default function App() {
     checkOnboarding();
   }, []);
 
+  const handleOnboardingComplete = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(ONBOARDING_KEY, "true");
+    } finally {
+      setShowOnboarding(false);
+    }
+  }, []);
+
   if (isLoading) {
     return null;
   }
@@ -33,7 +41,10 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <StatusBar style="light" />
-        <RootNavigator initialOnboarding={showOnboarding} />
+        <RootNavigator
+          initialOnboarding={showOnboarding}
+          onOnboardingComplete={handleOnboardingComplete}
+        />
       </AuthProvider>
     </SafeAreaProvider>
   );

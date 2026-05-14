@@ -479,6 +479,11 @@ const styles = StyleSheet.create({
   registerButtonDisabled: {
     opacity: 0.7,
   },
+  registerButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "center",

@@ -1,20 +1,46 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 
 const ACCESS_TOKEN_KEY = "@smartinvesting_auth_access_token";
 const REFRESH_TOKEN_KEY = "@smartinvesting_auth_refresh_token";
+const BIOMETRIC_REFRESH_TOKEN_KEY = "@smartinvesting_auth_biometric_refresh_token";
+
+async function setItem(key: string, value: string) {
+  try {
+    await SecureStore.setItemAsync(key, value);
+  } catch {
+    await AsyncStorage.setItem(key, value);
+  }
+}
+
+async function getItem(key: string) {
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch {
+    return AsyncStorage.getItem(key);
+  }
+}
+
+async function deleteItem(key: string) {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch {
+    await AsyncStorage.removeItem(key);
+  }
+}
 
 export const tokenStorage = {
   async saveTokens(accessToken: string, refreshToken: string) {
-    await AsyncStorage.multiSet([
-      [ACCESS_TOKEN_KEY, accessToken],
-      [REFRESH_TOKEN_KEY, refreshToken],
+    await Promise.all([
+      setItem(ACCESS_TOKEN_KEY, accessToken),
+      setItem(REFRESH_TOKEN_KEY, refreshToken),
     ]);
   },
 
   async getTokens() {
-    const [[, accessToken], [, refreshToken]] = await AsyncStorage.multiGet([
-      ACCESS_TOKEN_KEY,
-      REFRESH_TOKEN_KEY,
+    const [accessToken, refreshToken] = await Promise.all([
+      getItem(ACCESS_TOKEN_KEY),
+      getItem(REFRESH_TOKEN_KEY),
     ]);
 
     return {
@@ -23,7 +49,22 @@ export const tokenStorage = {
     };
   },
 
+  async saveBiometricRefreshToken(refreshToken: string) {
+    await setItem(BIOMETRIC_REFRESH_TOKEN_KEY, refreshToken);
+  },
+
+  async getBiometricRefreshToken() {
+    return (await getItem(BIOMETRIC_REFRESH_TOKEN_KEY)) ?? null;
+  },
+
+  async clearBiometricRefreshToken() {
+    await deleteItem(BIOMETRIC_REFRESH_TOKEN_KEY);
+  },
+
   async clearTokens() {
-    await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY]);
+    await Promise.all([
+      deleteItem(ACCESS_TOKEN_KEY),
+      deleteItem(REFRESH_TOKEN_KEY),
+    ]);
   },
 };

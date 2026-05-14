@@ -3,9 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SmartInvestingAPI.Database;
 using Microsoft.IdentityModel.Tokens;
+using System.Net.Security;
+using System.Security.Authentication;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi.Models;
+using CloudinaryDotNet;
+using SmartInvestingAPI.Model.Domain;
 using SmartInvestingAPI.Repositories;
 using SmartInvestingAPI.Services;
 using SmartInvestingAPI.Middleware;
@@ -14,6 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Load .env.local file for development (load before other config sources)
 DotNetEnv.Env.Load(".env.local");
+builder.Configuration.AddEnvironmentVariables();
 
 // Load secrets: User Secrets (dev) → Environment Variables → Config file
 // if (builder.Environment.IsDevelopment())
@@ -28,6 +33,10 @@ var jwtKey = GetRequiredEnvOrConfig(builder, "Jwt:Key", "JWT_SECRET_KEY");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SmartInvestingAPI";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SmartInvestingAPI";
 var jwtDurationMinutes = builder.Configuration.GetValue<int>("Jwt:DurationInMinutes", 60);
+var resetPasswordUrlBase = builder.Configuration["Frontend:ResetPasswordUrlBase"] ?? "smartinvesting://reset-password";
+var cloudinaryCloudName = GetRequiredEnvOrConfig(builder, "Cloudinary:CloudName", "CLOUDINARY_CLOUD_NAME");
+var cloudinaryApiKey = GetRequiredEnvOrConfig(builder, "Cloudinary:ApiKey", "CLOUDINARY_API_KEY");
+var cloudinaryApiSecret = GetRequiredEnvOrConfig(builder, "Cloudinary:ApiSecret", "CLOUDINARY_API_SECRET");
 
 var fireAntUsername = GetRequiredEnvOrConfig(builder, "FireAnt:Username", "FIREANT_USERNAME");
 var fireAntPassword = GetRequiredEnvOrConfig(builder, "FireAnt:Password", "FIREANT_PASSWORD");
@@ -97,21 +106,33 @@ builder.Services.AddScoped<IWalletRepository, SQLWalletRepository>();
 builder.Services.AddScoped<ITransactionRepository, SQLTransactionRepository>();
 builder.Services.AddScoped<ICategoryRepository, SQLCategoryRepository>();
 builder.Services.AddScoped<IBudgetRepository, SQLBudgetRepository>();
+builder.Services.AddScoped<IGoalRepository, SQLGoalRepository>();
 builder.Services.AddScoped<IAssetRepository, SQLAssetRepository>();
 builder.Services.AddScoped<IPortfolioRepository, SQLPortfolioRepository>();
 builder.Services.AddScoped<IInvestmentOrderRepository, SQLInvestmentOrderRepository>();
 builder.Services.AddScoped<IIncomeEventRepository, SQLIncomeEventRepository>();
 builder.Services.AddScoped<IInvestmentOrderService, InvestmentOrderService>();
+builder.Services.AddSingleton(_ =>
+{
+    var account = new Account(cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret);
+    return new Cloudinary(account) { Api = { Secure = true } };
+});
+builder.Services.AddScoped<IAvatarStorageService, CloudinaryAvatarStorageService>();
 
 // FireAnt market price - SSL validation only skipped in dev with explicit flag
 builder.Services.AddHttpClient<FireAntAuthService>()
     .ConfigurePrimaryHttpMessageHandler(() =>
     {
-        var handler = new HttpClientHandler();
+        var handler = new HttpClientHandler
+        {
+            SslProtocols = SslProtocols.Tls12,
+            ServerCertificateCustomValidationCallback = skipSslForDev
+                ? HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                : null,
+        };
         if (skipSslForDev)
         {
             Console.WriteLine("WARNING: SSL certificate validation is DISABLED for FireAnt API (Development only)");
-            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
         }
         return handler;
     });
@@ -119,11 +140,13 @@ builder.Services.AddHttpClient<FireAntAuthService>()
 builder.Services.AddHttpClient<FireAntService>()
     .ConfigurePrimaryHttpMessageHandler(() =>
     {
-        var handler = new HttpClientHandler();
-        if (skipSslForDev)
+        var handler = new HttpClientHandler
         {
-            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-        }
+            SslProtocols = SslProtocols.Tls12,
+            ServerCertificateCustomValidationCallback = skipSslForDev
+                ? HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                : null,
+        };
         return handler;
     });
 builder.Services.AddScoped<IFireAntService>(sp => sp.GetRequiredService<FireAntService>());
@@ -141,6 +164,7 @@ else
 }
 
 builder.Services.AddScoped<IMarketPriceService, MarketPriceService>();
+builder.Services.AddScoped<IEmailService, ConsoleEmailService>();
 
 //Authentication
 builder.Services.AddAuthentication(options =>
@@ -165,13 +189,13 @@ builder.Services.AddAuthentication(options =>
 });
 
 //Identity Configuration
-builder.Services.AddIdentityCore<IdentityUser<Guid>>()
+builder.Services.AddIdentityCore<User>()
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppIdentityDbcontext>()
     .AddDefaultTokenProviders()
-    .AddSignInManager<SignInManager<IdentityUser<Guid>>>();
+    .AddSignInManager<SignInManager<User>>();
 
-builder.Services.AddScoped<SignInManager<IdentityUser<Guid>>>();
+builder.Services.AddScoped<SignInManager<User>>();
 
 builder.Services.AddAuthorization(options =>
 {

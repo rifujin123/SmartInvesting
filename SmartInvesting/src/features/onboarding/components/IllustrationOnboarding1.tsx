@@ -39,7 +39,7 @@ export const IllustrationOnboarding1: React.FC<IllustrationOnboarding1Props> = (
             <View style={styles.expenseLine} />
             <View style={styles.expenseLineShort} />
           </View>
-          <Text style={styles.expenseAmount}>+$240</Text>
+          <Text style={styles.expenseAmount}>+240 VND</Text>
         </View>
         <View style={[styles.expenseCard, styles.expenseCard2]}>
           <View style={[styles.expenseIcon, styles.expenseIcon2]} />
@@ -47,7 +47,7 @@ export const IllustrationOnboarding1: React.FC<IllustrationOnboarding1Props> = (
             <View style={styles.expenseLine} />
             <View style={styles.expenseLineShort} />
           </View>
-          <Text style={[styles.expenseAmount, styles.expenseAmount2]}>-$85</Text>
+          <Text style={[styles.expenseAmount, styles.expenseAmount2]}>-85 VND</Text>
         </View>
       </View>
     </View>
