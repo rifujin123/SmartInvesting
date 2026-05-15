@@ -56,3 +56,31 @@ export interface CategoryDto {
   type: number;
   icon: string;
 }
+
+// Dashboard API types
+export interface DashboardSummaryDto {
+  year: number;
+  month: number;
+  totalCashBalance: number;
+  portfolioNav: number;
+  totalWealth: number;
+  totalExpenseThisMonth: number;
+  wallets: DashboardWalletRowDto[];
+  budgets: DashboardBudgetRowDto[];
+}
+
+export interface DashboardWalletRowDto {
+  id: string;
+  name: string;
+  balance: number;
+  currency: string;
+  isPaper: boolean;
+}
+
+export interface DashboardBudgetRowDto {
+  budgetId: number;
+  categoryName: string;
+  amountLimit: number;
+  totalSpent: number;
+  remaining: number;
+}

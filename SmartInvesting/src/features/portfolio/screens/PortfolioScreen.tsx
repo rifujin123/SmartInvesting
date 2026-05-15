@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { formatCurrency, formatNumber } from "../../../shared/utils/formatCurrency";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,91 +7,295 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  ActivityIndicator,
+  RefreshControl,
+  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../theme/colors";
 import { spacing } from "../../../theme/spacing";
 import { typography } from "../../../theme/typography";
 import { AppHeader } from "../../../shared/components";
+import { formatCurrency, formatNumber } from "../../../shared/utils/formatCurrency";
+import { getStocks, searchAssets } from "../../../services/assets/assetService";
+import { AssetSearchResult } from "../../../services/assets/types";
+import { transactionsService } from "../../../services/transactions/transactionsService";
+import { useAuth } from "../../../context/AuthContext";
+import { walletsService } from "../../../services/wallets/walletsService";
+import { dashboardService } from "../../../services/dashboard/dashboardService";
+import type { WalletDto } from "../../../services/wallets/types";
+import type { DashboardSummaryDto } from "../../../services/dashboard/dashboardService";
 
 interface PortfolioScreenProps {}
 
-interface Holding {
-  id: string;
-  name: string;
-  symbol: string;
-  shares: number;
-  avgPrice: number;
-  currentPrice: number;
-  value: number;
-  change: number;
-  changePercent: number;
-  type: "stock" | "etf" | "gold";
-}
-
-const mockHoldings: Holding[] = [
-  { id: "1", name: "Apple Inc.", symbol: "AAPL", shares: 10, avgPrice: 145.0, currentPrice: 178.5, value: 1785.0, change: 335.0, changePercent: 23.1, type: "stock" },
-  { id: "2", name: "S&P 500 ETF", symbol: "SPY", shares: 5, avgPrice: 420.0, currentPrice: 478.2, value: 2391.0, change: 291.0, changePercent: 13.86, type: "etf" },
-  { id: "3", name: "Gold", symbol: "XAU", shares: 2, avgPrice: 1900.0, currentPrice: 2320.0, value: 4640.0, change: 840.0, changePercent: 22.1, type: "gold" },
-  { id: "4", name: "Tesla Inc.", symbol: "TSLA", shares: 8, avgPrice: 220.0, currentPrice: 248.5, value: 1988.0, change: 228.0, changePercent: 12.95, type: "stock" },
-];
-
 export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
+  const { accessToken } = useAuth();
+  const [activeWallet, setActiveWallet] = useState<WalletDto | null>(null);
+  const [summary, setSummary] = useState<DashboardSummaryDto | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "stock" | "etf" | "gold">("all");
-  const [showSellModal, setShowSellModal] = useState(false);
-  const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null);
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<AssetSearchResult | null>(null);
+  const [assets, setAssets] = useState<AssetSearchResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [buyAmount, setBuyAmount] = useState("");
+  const [buyShares, setBuyShares] = useState("");
+  const [buyPrice, setBuyPrice] = useState("");
+  const [buyLoading, setBuyLoading] = useState(false);
 
-  const totalValue = mockHoldings.reduce((acc, h) => acc + h.value, 0);
-  const totalProfit = mockHoldings.reduce((acc, h) => acc + h.change, 0);
+  // Load wallet + summary on mount
+  useEffect(() => {
+    const loadData = async () => {
+      if (!accessToken) return;
+      try {
+        const [walletsRes, summaryRes] = await Promise.all([
+          walletsService.getMyWallets(accessToken),
+          dashboardService.getSummary(accessToken),
+        ]);
+        if (walletsRes.items.length > 0) {
+          setActiveWallet(walletsRes.items[0]);
+        }
+        setSummary(summaryRes);
+      } catch (error) {
+        console.error("Failed to load data:", error);
+      }
+    };
+    loadData();
+  }, [accessToken]);
 
-  const filteredHoldings = activeTab === "all" ? mockHoldings : mockHoldings.filter(h => h.type === activeTab);
+  const loadAssets = useCallback(
+    async (reset = false) => {
+      if (!hasMore && !reset) return;
+      try {
+        const limit = 20;
+        const offset = reset ? 0 : (page - 1) * limit;
+        let data: AssetSearchResult[];
+        if (searchQuery.length >= 2) {
+          data = await searchAssets(searchQuery, limit, offset);
+        } else {
+          data = await getStocks(limit, offset);
+        }
+        if (reset) {
+          setAssets(data);
+          setPage(1);
+        } else {
+          setAssets((prev) => [...prev, ...data]);
+        }
+        setHasMore(data.length === limit);
+      } catch (error) {
+        console.error("Failed to load assets:", error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [searchQuery, page, hasMore]
+  );
+
+  useEffect(() => {
+    loadAssets(true);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (page > 1) {
+      loadAssets(false);
+    }
+  }, [page]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setPage(1);
+    loadAssets(true);
+    // Reload summary on refresh
+    if (accessToken) {
+      dashboardService.getSummary(accessToken).then(setSummary).catch(console.error);
+    }
+  }, [loadAssets, accessToken]);
+
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      setPage((prev) => prev + 1);
+    }
+  };
+
+  const handleBuy = (asset: AssetSearchResult) => {
+    if (!activeWallet) {
+      // TODO: show toast "Create wallet first"
+      return;
+    }
+    setSelectedAsset(asset);
+    setBuyPrice(asset.latestPrice?.toString() || "0");
+    setBuyAmount("");
+    setBuyShares("");
+    setShowBuyModal(true);
+  };
+
+  const handleConfirmBuy = async () => {
+    if (!accessToken || !activeWallet || !selectedAsset) return;
+    try {
+      setBuyLoading(true);
+      const amount = parseFloat(buyAmount) || parseFloat(buyShares) * parseFloat(buyPrice);
+      if (amount <= 0) {
+        // TODO: show error toast
+        return;
+      }
+      await transactionsService.createTransaction(accessToken, activeWallet.id, {
+        amount: -amount,
+        note: `Buy ${selectedAsset.symbol}`,
+        categoryId: 0,
+        assetId: selectedAsset.id,
+      });
+      setShowBuyModal(false);
+      // TODO: show success toast
+    } catch (error) {
+      console.error("Buy failed:", error);
+      // TODO: show error toast
+    } finally {
+      setBuyLoading(false);
+    }
+  };
+
+  const filteredAssets = activeTab === "all" ? assets : assets.filter((a) => a.type === activeTab);
 
   const renderTab = (tab: "all" | "stock" | "etf" | "gold", label: string) => (
-    <TouchableOpacity style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.tab, activeTab === tab && styles.tabActive]}
+      onPress={() => setActiveTab(tab)}
+      activeOpacity={0.7}
+    >
       <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{label}</Text>
     </TouchableOpacity>
   );
 
-  const handleSell = (holding: Holding) => {
-    setSelectedHolding(holding);
-    setShowSellModal(true);
-  };
-
-  const getTypeColor = (type: Holding["type"]) => {
-    switch (type) {
-      case "stock": return "#DCFCE7";
-      case "etf": return "#DBEAFE";
-      case "gold": return "#FEF3C7";
-    }
-  };
+  const renderAssetItem = ({ item }: { item: AssetSearchResult }) => (
+    <TouchableOpacity
+      style={styles.assetCard}
+      onPress={() => handleBuy(item)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.assetLeft}>
+        <View style={styles.assetIcon}>
+          <Ionicons name="trending-up" size={20} color={colors.primary} />
+        </View>
+        <View style={styles.assetInfo}>
+          <Text style={styles.assetName}>{item.name}</Text>
+          <Text style={styles.assetSymbol}>{item.symbol}</Text>
+        </View>
+      </View>
+      <View style={styles.assetRight}>
+        <Text style={styles.assetPrice}>{formatCurrency(item.latestPrice || 0)}</Text>
+        <TouchableOpacity
+          style={styles.buyBtn}
+          onPress={() => handleBuy(item)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.buyBtnText}>Buy</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <AppHeader />
 
-        {/* Portfolio Summary */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryMain}>
-            <Text style={styles.summaryLabel}>Total Value</Text>
-            <Text style={styles.summaryValue}>{formatCurrency(totalValue)}</Text>
-          </View>
-          <View style={styles.summaryStats}>
-            <View style={styles.summaryStat}>
-              <Text style={styles.summaryStatLabel}>Total Profit</Text>
-              <Text style={styles.summaryStatValue}>+{formatNumber(totalProfit)} VND</Text>
+        {/* Hero Card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroHeader}>
+            <View style={styles.heroRow}>
+              <Text style={styles.heroLabel}>Portfolio Value</Text>
+              <TouchableOpacity>
+                <Text style={styles.chiTietText}>Details</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.summaryStatDivider} />
-            <View style={styles.summaryStat}>
-              <Text style={styles.summaryStatLabel}>Holdings</Text>
-              <Text style={styles.summaryStatValue}>{mockHoldings.length}</Text>
+            <Text style={styles.heroTitle}>
+              {summary ? formatNumber(summary.totalWealth) : "---"} <Text style={styles.currencyText}>VND</Text>
+            </Text>
+            <View style={styles.profitLossRow}>
+              <Text
+                style={[
+                  styles.profitLossText,
+                  {
+                    color: !summary
+                      ? colors.success
+                      : summary.portfolioProfitLoss >= 0
+                      ? colors.success
+                      : colors.loss,
+                  },
+                ]}
+              >
+                {summary
+                  ? `${summary.portfolioProfitLoss >= 0 ? "+" : ""}${formatNumber(
+                      summary.portfolioProfitLoss
+                    )}`
+                  : "---"}
+              </Text>
+              <View
+                style={[
+                  styles.percentBadge,
+                  {
+                    borderColor: !summary
+                      ? colors.success
+                      : summary.portfolioProfitLoss >= 0
+                      ? colors.success
+                      : colors.loss,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.percentText,
+                    {
+                      color: !summary
+                        ? colors.success
+                        : summary.portfolioProfitLoss >= 0
+                        ? colors.success
+                        : colors.loss,
+                    },
+                  ]}
+                >
+                  {summary
+                    ? `${summary.portfolioProfitLossPercent >= 0 ? "+" : ""}${summary.portfolioProfitLossPercent.toFixed(2)}%`
+                    : "---%"}
+                </Text>
+              </View>
             </View>
           </View>
+          <View style={styles.divider} />
+          <View style={styles.cashRow}>
+            <Text style={styles.cashLabel}>Cash: <Text style={styles.cashValue}>{summary ? formatNumber(summary.totalWealth - summary.portfolioNav) : "---"}</Text></Text>
+            <TouchableOpacity style={styles.napTienBtn}>
+              <Text style={styles.napTienText}>Deposit</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search assets..."
+            placeholderTextColor={colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
 
         {/* Filter Tabs */}
         <View style={styles.filterContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
             {renderTab("all", "All")}
             {renderTab("stock", "Stocks")}
             {renderTab("etf", "ETFs")}
@@ -100,73 +303,113 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
           </ScrollView>
         </View>
 
-        {/* Holdings List */}
+        {/* Assets List */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Holdings</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.holdingsList}>
-            {filteredHoldings.map((holding) => (
-              <View key={holding.id} style={styles.holdingCard}>
-                <View style={styles.holdingHeader}>
-                  <View style={styles.holdingLeft}>
-                    <View style={[styles.holdingBadge, { backgroundColor: getTypeColor(holding.type) }]}>
-                      <Ionicons
-                        name={holding.type === "stock" ? "trending-up" : holding.type === "etf" ? "bar-chart" : "diamond"}
-                        size={18}
-                        color={holding.type === "stock" ? "#16A34A" : holding.type === "etf" ? "#2563EB" : "#D97706"}
-                      />
-                    </View>
-                    <View>
-                      <Text style={styles.holdingName}>{holding.name}</Text>
-                      <Text style={styles.holdingSymbol}>{holding.symbol}</Text>
-                    </View>
+          {loading && assets.length === 0 ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : filteredAssets.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="search-outline" size={48} color={colors.textMuted} />
+              <Text style={styles.emptyText}>No assets found</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredAssets}
+              renderItem={renderAssetItem}
+              keyExtractor={(item) => item.symbol}
+              scrollEnabled={false}
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                hasMore && !loading ? (
+                  <View style={styles.loadMoreContainer}>
+                    <ActivityIndicator size="small" color={colors.primary} />
                   </View>
-                  <View style={styles.holdingRight}>
-                    <Text style={styles.holdingValue}>{formatCurrency(holding.value)}</Text>
-                    <Text style={[styles.holdingChange, { color: holding.change >= 0 ? colors.success : colors.loss }]}>
-                      {holding.change >= 0 ? "+" : ""}{holding.changePercent.toFixed(1)}%
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
+                ) : null
+              }
+            />
+          )}
         </View>
       </ScrollView>
 
-      {/* Sell Modal */}
-      <Modal visible={showSellModal} transparent animationType="slide" onRequestClose={() => setShowSellModal(false)}>
+      {/* Buy Modal */}
+      <Modal visible={showBuyModal} transparent animationType="slide" onRequestClose={() => setShowBuyModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.sellModalContent}>
+          <View style={styles.buyModalContent}>
             <View style={styles.modalHandle} />
-            {selectedHolding && (
+            {selectedAsset && (
               <>
-                <Text style={styles.modalTitle}>Sell {selectedHolding.symbol}</Text>
-                <View style={styles.modalBalanceInfo}>
-                  <Text style={styles.modalBalanceLabel}>Available Shares</Text>
-                  <Text style={styles.modalBalanceValue}>{selectedHolding.shares}</Text>
+                <Text style={styles.modalTitle}>Buy {selectedAsset.symbol}</Text>
+                <View style={styles.modalAssetInfo}>
+                  <Text style={styles.modalAssetName}>{selectedAsset.name}</Text>
+                  <Text style={styles.modalAssetPrice}>{formatCurrency(selectedAsset.latestPrice || 0)}</Text>
                 </View>
+
                 <View style={styles.modalInputGroup}>
-                  <Text style={styles.modalInputLabel}>Shares to Sell</Text>
+                  <Text style={styles.modalInputLabel}>Amount (VND)</Text>
                   <View style={styles.modalInputContainer}>
                     <TextInput
                       style={styles.modalInput}
                       placeholder="0"
                       placeholderTextColor={colors.textMuted}
-                      keyboardType="number-pad"
+                      keyboardType="decimal-pad"
+                      value={buyAmount}
+                      onChangeText={setBuyAmount}
                     />
                   </View>
                 </View>
+
+                <View style={styles.modalDivider} />
+
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Shares</Text>
+                  <View style={styles.modalInputContainer}>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="decimal-pad"
+                      value={buyShares}
+                      onChangeText={setBuyShares}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalInputLabel}>Price per Share</Text>
+                  <View style={styles.modalInputContainer}>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="decimal-pad"
+                      value={buyPrice}
+                      onChangeText={setBuyPrice}
+                      editable={false}
+                    />
+                  </View>
+                </View>
+
                 <View style={styles.modalButtons}>
-                  <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setShowSellModal(false)}>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalBtnCancel]}
+                    onPress={() => setShowBuyModal(false)}
+                    disabled={buyLoading}
+                  >
                     <Text style={styles.modalBtnCancelText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.modalBtn, styles.modalBtnConfirm]} onPress={() => setShowSellModal(false)}>
-                    <Text style={styles.modalBtnConfirmText}>Preview Sell</Text>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalBtnConfirm]}
+                    onPress={handleConfirmBuy}
+                    disabled={buyLoading}
+                  >
+                    {buyLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.modalBtnConfirmText}>Confirm Buy</Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               </>
@@ -181,49 +424,119 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
-  summaryCard: {
+  heroCard: {
     marginHorizontal: spacing.xl,
     marginTop: spacing.lg,
     padding: spacing.lg,
-    backgroundColor: colors.figma.primary,
+    backgroundColor: colors.background,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
   },
-  summaryMain: {},
-  summaryLabel: {
-    ...typography.caption,
-    color: "rgba(255,255,255,0.8)",
+  heroHeader: {
+    marginBottom: spacing.base,
   },
-  summaryValue: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    marginTop: spacing.xs,
-  },
-  summaryStats: {
+  heroRow: {
     flexDirection: "row",
-    marginTop: spacing.base,
+    justifyContent: "space-between",
     alignItems: "center",
   },
-  summaryStat: {
-    flex: 1,
-  },
-  summaryStatDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    marginHorizontal: spacing.base,
-  },
-  summaryStatLabel: {
-    ...typography.caption,
-    color: "rgba(255,255,255,0.7)",
-  },
-  summaryStatValue: {
-    ...typography.body,
+  heroLabel: {
+    fontSize: 18,
     fontWeight: "600",
-    color: "#FFFFFF",
-    marginTop: 2,
+    color: "#1e293b",
+  },
+  chiTietText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2563eb",
+  },
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#1e293b",
+    marginTop: spacing.sm,
+  },
+  currencyText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1e293b",
+  },
+  profitLossRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: spacing.xs,
+    gap: spacing.sm,
+  },
+  profitLossText: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  percentBadge: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  percentText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    marginVertical: spacing.base,
+  },
+  cashRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  cashLabel: {
+    fontSize: 16,
+    color: "#64748b",
+  },
+  cashValue: {
+    fontWeight: "600",
+    color: "#1e293b",
+  },
+  napTienBtn: {
+    backgroundColor: "#1d4ed8",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+  },
+  napTienText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  searchContainer: {
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surfaceCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.base,
+  },
+  searchIcon: {
+    marginRight: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: spacing.base,
+    ...typography.body,
+    color: colors.textPrimary,
   },
   filterContainer: {
     marginTop: spacing.base,
@@ -241,8 +554,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   tabActive: {
-    backgroundColor: colors.figma.primary,
-    borderColor: colors.figma.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   tabText: {
     ...typography.caption,
@@ -250,106 +563,104 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   tabTextActive: {
-    color: "#FFFFFF",
+    color: colors.heroText,
     fontWeight: "600",
   },
   section: {
     paddingHorizontal: spacing.xl,
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  sectionTitle: {
-    ...typography.sectionHeader,
-    color: colors.textPrimary,
-  },
-  seeAllText: {
-    ...typography.body,
-    fontWeight: "500",
-    color: colors.figma.primary,
-  },
-  holdingsList: {
-    marginTop: spacing.base,
-    backgroundColor: colors.surfaceCard,
-    borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  holdingCard: {
-    padding: spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  holdingHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  holdingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  holdingBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  loadingContainer: {
+    paddingVertical: spacing.xl,
     justifyContent: "center",
     alignItems: "center",
   },
-  holdingBadgeText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.textPrimary,
+  emptyContainer: {
+    paddingVertical: spacing.xl,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  holdingName: {
+  emptyText: {
+    ...typography.body,
+    color: colors.textMuted,
+    marginTop: spacing.base,
+  },
+  assetCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: spacing.base,
+    paddingHorizontal: spacing.base,
+    backgroundColor: colors.surfaceCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  assetLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  assetIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: spacing.base,
+  },
+  assetInfo: {
+    flex: 1,
+  },
+  assetName: {
     ...typography.body,
     fontWeight: "500",
     color: colors.textPrimary,
   },
-  holdingSymbol: {
+  assetSymbol: {
     ...typography.caption,
     color: colors.textSecondary,
     marginTop: 2,
   },
-  holdingRight: {
+  assetRight: {
     alignItems: "flex-end",
+    gap: spacing.sm,
   },
-  holdingValue: {
+  assetPrice: {
     ...typography.body,
     fontWeight: "600",
     color: colors.textPrimary,
   },
-  holdingChange: {
-    ...typography.caption,
-    fontWeight: "500",
-    marginTop: 2,
-  },
-  sellButton: {
+  buyBtn: {
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: colors.primary,
     borderRadius: 8,
   },
-  sellButtonText: {
-    fontSize: 13,
+  buyBtnText: {
+    ...typography.caption,
     fontWeight: "600",
-    color: colors.loss,
+    color: colors.heroText,
+  },
+  loadMoreContainer: {
+    paddingVertical: spacing.base,
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: colors.overlay,
     justifyContent: "flex-end",
   },
-  sellModalContent: {
+  buyModalContent: {
     backgroundColor: colors.surfaceCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: spacing.xl,
+    maxHeight: "80%",
   },
   modalHandle: {
     width: 36,
@@ -365,23 +676,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: spacing.base,
   },
-  modalBalanceInfo: {
+  modalAssetInfo: {
     backgroundColor: colors.surface,
     borderRadius: 12,
     padding: spacing.base,
-    marginBottom: spacing.base,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    marginBottom: spacing.lg,
   },
-  modalBalanceLabel: {
+  modalAssetName: {
     ...typography.body,
     color: colors.textSecondary,
   },
-  modalBalanceValue: {
-    ...typography.body,
-    fontWeight: "600",
+  modalAssetPrice: {
+    ...typography.sectionHeader,
     color: colors.textPrimary,
+    marginTop: spacing.sm,
   },
   modalInputGroup: {
     marginBottom: spacing.base,
@@ -405,15 +713,22 @@ const styles = StyleSheet.create({
     padding: spacing.base,
     textAlign: "center",
   },
+  modalDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.base,
+  },
   modalButtons: {
     flexDirection: "row",
     gap: spacing.base,
+    marginTop: spacing.lg,
   },
   modalBtn: {
     flex: 1,
     paddingVertical: spacing.base,
     borderRadius: 12,
     alignItems: "center",
+    justifyContent: "center",
   },
   modalBtnCancel: {
     backgroundColor: colors.surface,
@@ -423,10 +738,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   modalBtnConfirm: {
-    backgroundColor: colors.figma.primary,
+    backgroundColor: colors.primary,
   },
   modalBtnConfirmText: {
     ...typography.button,
-    color: "#FFFFFF",
+    color: colors.heroText,
   },
 });

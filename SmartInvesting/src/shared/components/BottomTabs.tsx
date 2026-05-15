@@ -363,10 +363,6 @@ export const BottomTabs: React.FC<BottomTabBarProps> = ({
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     alignItems: "center",
     paddingHorizontal: 16,
   },

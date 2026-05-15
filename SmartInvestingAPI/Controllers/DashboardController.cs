@@ -90,6 +90,15 @@ namespace SmartInvestingAPI.Controllers
                 .Where(p => p.Asset != null)
                 .Sum(p => p.TotalQuantity * p.Asset!.CurrentPrice);
 
+            var portfolioInvestment = portfolios
+                .Where(p => p.Asset != null)
+                .Sum(p => p.TotalQuantity * p.AvgPrice);
+
+            var portfolioProfitLoss = nav - portfolioInvestment;
+            var portfolioProfitLossPercent = portfolioInvestment == 0
+                ? 0
+                : (portfolioProfitLoss / portfolioInvestment) * 100;
+
             // FIX: Batch query to avoid N+1 - get all budget spending in one call
             var categoryIds = monthBudgets.Select(b => b.CategoryId).ToList();
             var spentByCategory = categoryIds.Any()
@@ -111,6 +120,9 @@ namespace SmartInvestingAPI.Controllers
                 Month = targetMonth,
                 TotalCashBalance = totalCash,
                 PortfolioNav = nav,
+                PortfolioInvestment = portfolioInvestment,
+                PortfolioProfitLoss = portfolioProfitLoss,
+                PortfolioProfitLossPercent = portfolioProfitLossPercent,
                 TotalWealth = totalCash + nav,
                 TotalExpenseThisMonth = totalExpense,
                 Wallets = mapper.Map<List<DashboardWalletRowDto>>(wallets),

@@ -6,6 +6,9 @@ namespace SmartInvestingAPI.Model.DTOs
         public int Month { get; set; }
         public decimal TotalCashBalance { get; set; }
         public decimal PortfolioNav { get; set; }
+        public decimal PortfolioInvestment { get; set; }
+        public decimal PortfolioProfitLoss { get; set; }
+        public decimal PortfolioProfitLossPercent { get; set; }
         public decimal TotalWealth { get; set; }
         public decimal TotalExpenseThisMonth { get; set; }
         public List<DashboardWalletRowDto> Wallets { get; set; } = new();

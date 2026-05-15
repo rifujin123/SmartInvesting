@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  TextInput,
+  Modal,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -64,6 +67,9 @@ const designTokens = {
 
 export const FinanceScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<FinanceTab>("overview");
+  const overviewScrollRef = useRef<ScrollView | null>(null);
+  const transactionsScrollRef = useRef<ScrollView | null>(null);
+  const budgetsScrollRef = useRef<ScrollView | null>(null);
   const navigation = useNavigation<FinanceNavigation>();
 
   // Auth & Wallet state
@@ -85,6 +91,23 @@ export const FinanceScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Create wallet modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [walletName, setWalletName] = useState("");
+  const [walletBalance, setWalletBalance] = useState("0");
+  const [walletCurrency, setWalletCurrency] = useState("VND");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  // Create goal modal state
+  const [showCreateGoalModal, setShowCreateGoalModal] = useState(false);
+  const [goalName, setGoalName] = useState("");
+  const [goalTargetAmount, setGoalTargetAmount] = useState("");
+  const [goalIcon, setGoalIcon] = useState("flag");
+  const [goalColor, setGoalColor] = useState(designTokens.primary);
+  const [goalSubmitting, setGoalSubmitting] = useState(false);
+  const [goalModalError, setGoalModalError] = useState<string | null>(null);
 
   // Load auth token
   const loadToken = useCallback(async () => {
@@ -196,12 +219,29 @@ export const FinanceScreen: React.FC = () => {
     setCurrentMonth({ month: m, year: y });
   };
 
-  const handleAddTransaction = () => {
-    navigation.navigate("Transactions");
+  const scrollTabToTop = (tab: FinanceTab) => {
+    const ref =
+      tab === "overview"
+        ? overviewScrollRef
+        : tab === "transactions"
+          ? transactionsScrollRef
+          : budgetsScrollRef;
+
+    ref.current?.scrollTo({ y: 0, animated: false });
+  };
+
+  const handleTabChange = (tab: FinanceTab) => {
+    setActiveTab(tab);
+    requestAnimationFrame(() => scrollTabToTop(tab));
   };
 
   const handleAddGoal = () => {
-    // TODO: navigate to Goals screen when available
+    setGoalName("");
+    setGoalTargetAmount("");
+    setGoalIcon("flag");
+    setGoalColor(designTokens.primary);
+    setGoalModalError(null);
+    setShowCreateGoalModal(true);
   };
 
   const handleViewAllTx = () => {
@@ -212,11 +252,311 @@ export const FinanceScreen: React.FC = () => {
     // TODO: navigate to GoalDetail when available
   };
 
+  const resetCreateWalletForm = () => {
+    setWalletName("");
+    setWalletBalance("0");
+    setWalletCurrency("VND");
+    setModalError(null);
+  };
+
+  const openCreateWalletModal = () => {
+    resetCreateWalletForm();
+    setShowCreateModal(true);
+  };
+
+  const closeCreateWalletModal = () => {
+    setShowCreateModal(false);
+    setIsSubmitting(false);
+    setModalError(null);
+  };
+
+  const submitCreateWallet = async () => {
+    if (!token) return;
+
+    const name = walletName.trim();
+    if (!name) {
+      setModalError("Wallet name required");
+      return;
+    }
+    if (name.length > 50) {
+      setModalError("Wallet name too long");
+      return;
+    }
+
+    const balanceNum = Number(walletBalance);
+    if (!Number.isFinite(balanceNum) || balanceNum < 0) {
+      setModalError("Balance must be number >= 0");
+      return;
+    }
+
+    if (!["VND", "USD"].includes(walletCurrency)) {
+      setModalError("Currency invalid");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setModalError(null);
+
+      const created = await walletsService.createWallet(token, {
+        name,
+        balance: balanceNum,
+        currency: walletCurrency,
+        isPaper: false,
+      });
+
+      // Refresh screen data + select new wallet
+      await loadData();
+      setActiveWallet(created);
+
+      closeCreateWalletModal();
+      Alert.alert("Wallet created", `Created: ${created.name}`);
+    } catch (e) {
+      console.error("createWallet error", e);
+      setModalError("Create wallet failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderCreateWalletModal = () => (
+    <Modal
+      visible={showCreateModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={closeCreateWalletModal}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Create Wallet</Text>
+
+          {modalError ? (
+            <Text style={styles.modalError}>{modalError}</Text>
+          ) : null}
+
+          <Text style={styles.modalLabel}>Wallet Name *</Text>
+          <TextInput
+            style={styles.modalInput}
+            value={walletName}
+            onChangeText={setWalletName}
+            placeholder="e.g. Cash, Bank, Momo"
+            maxLength={50}
+            editable={!isSubmitting}
+          />
+
+          <Text style={styles.modalLabel}>Initial Balance</Text>
+          <TextInput
+            style={styles.modalInput}
+            value={walletBalance}
+            onChangeText={setWalletBalance}
+            placeholder="0"
+            keyboardType="decimal-pad"
+            editable={!isSubmitting}
+          />
+
+          <Text style={styles.modalLabel}>Currency</Text>
+          <View style={styles.currencyRow}>
+            {["VND", "USD"].map((cur) => (
+              <TouchableOpacity
+                key={cur}
+                style={[
+                  styles.currencyChip,
+                  walletCurrency === cur && styles.currencyChipActive,
+                ]}
+                onPress={() => setWalletCurrency(cur)}
+                disabled={isSubmitting}
+              >
+                <Text
+                  style={[
+                    styles.currencyChipText,
+                    walletCurrency === cur && styles.currencyChipTextActive,
+                  ]}
+                >
+                  {cur}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={styles.modalCancelBtn}
+              onPress={closeCreateWalletModal}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.modalCreateBtn,
+                isSubmitting && styles.modalCreateBtnDisabled,
+              ]}
+              onPress={submitCreateWallet}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color={designTokens.heroText} />
+              ) : (
+                <Text style={styles.modalCreateText}>Create</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const closeCreateGoalModal = () => {
+    setShowCreateGoalModal(false);
+    setGoalSubmitting(false);
+    setGoalModalError(null);
+  };
+
+  const submitCreateGoal = async () => {
+    if (!token) return;
+
+    const name = goalName.trim();
+    const targetAmount = Number(goalTargetAmount);
+
+    if (!name) {
+      setGoalModalError("Goal name required");
+      return;
+    }
+    if (!Number.isFinite(targetAmount) || targetAmount <= 0) {
+      setGoalModalError("Target amount must be greater than 0");
+      return;
+    }
+
+    try {
+      setGoalSubmitting(true);
+      setGoalModalError(null);
+
+      const createdGoal = await financeService.createGoal(token, {
+        name,
+        targetAmount,
+        icon: goalIcon,
+        color: goalColor,
+      });
+
+      setGoals((prev) => [createdGoal, ...prev.filter((goal) => goal.id !== createdGoal.id)]);
+      closeCreateGoalModal();
+      Alert.alert("Goal created", `Created: ${createdGoal.name}`);
+    } catch (e) {
+      console.error("createGoal error", e);
+      setGoalModalError("Create goal failed");
+    } finally {
+      setGoalSubmitting(false);
+    }
+  };
+
+  const renderCreateGoalModal = () => (
+    <Modal
+      visible={showCreateGoalModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={closeCreateGoalModal}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Create Goal</Text>
+
+          {goalModalError ? (
+            <Text style={styles.modalError}>{goalModalError}</Text>
+          ) : null}
+
+          <Text style={styles.modalLabel}>Goal Name *</Text>
+          <TextInput
+            style={styles.modalInput}
+            value={goalName}
+            onChangeText={setGoalName}
+            placeholder="e.g. Emergency Fund"
+            maxLength={50}
+            editable={!goalSubmitting}
+          />
+
+          <Text style={styles.modalLabel}>Target Amount</Text>
+          <TextInput
+            style={styles.modalInput}
+            value={goalTargetAmount}
+            onChangeText={setGoalTargetAmount}
+            placeholder="10000000"
+            keyboardType="decimal-pad"
+            editable={!goalSubmitting}
+          />
+
+          <Text style={styles.modalLabel}>Icon</Text>
+          <View style={styles.currencyRow}>
+            {["flag", "wallet", "card", "cash"].map((icon) => (
+              <TouchableOpacity
+                key={icon}
+                style={[
+                  styles.currencyChip,
+                  goalIcon === icon && styles.currencyChipActive,
+                ]}
+                onPress={() => setGoalIcon(icon)}
+                disabled={goalSubmitting}
+              >
+                <Ionicons
+                  name={icon as keyof typeof Ionicons.glyphMap}
+                  size={16}
+                  color={goalIcon === icon ? designTokens.heroText : designTokens.textSecondary}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.modalLabel}>Color</Text>
+          <View style={styles.colorRow}>
+            {[designTokens.primary, designTokens.success, designTokens.warning, designTokens.loss].map((color) => (
+              <TouchableOpacity
+                key={color}
+                style={[
+                  styles.colorChip,
+                  { backgroundColor: color },
+                  goalColor === color && styles.colorChipActive,
+                ]}
+                onPress={() => setGoalColor(color)}
+                disabled={goalSubmitting}
+              />
+            ))}
+          </View>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={styles.modalCancelBtn}
+              onPress={closeCreateGoalModal}
+              disabled={goalSubmitting}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.modalCreateBtn,
+                goalSubmitting && styles.modalCreateBtnDisabled,
+              ]}
+              onPress={submitCreateGoal}
+              disabled={goalSubmitting}
+            >
+              {goalSubmitting ? (
+                <ActivityIndicator size="small" color={designTokens.heroText} />
+              ) : (
+                <Text style={styles.modalCreateText}>Create</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   // Budgets tab
   if (activeTab === "budgets") {
     return (
       <View style={styles.container}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={budgetsScrollRef}
+          showsVerticalScrollIndicator={false}
+        >
           <AppHeader />
           <View style={styles.segmentWrap}>
             <SegmentedControl
@@ -226,7 +566,7 @@ export const FinanceScreen: React.FC = () => {
                 { label: "Budgets", value: "budgets" },
               ]}
               selectedValue={activeTab}
-              onChange={(value) => setActiveTab(value as FinanceTab)}
+              onChange={(value) => handleTabChange(value as FinanceTab)}
             />
           </View>
           <BudgetsScreen embedded />
@@ -239,7 +579,10 @@ export const FinanceScreen: React.FC = () => {
   if (activeTab === "transactions") {
     return (
       <View style={styles.container}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          ref={transactionsScrollRef}
+          showsVerticalScrollIndicator={false}
+        >
           <AppHeader />
           <View style={styles.segmentWrap}>
             <SegmentedControl
@@ -249,7 +592,7 @@ export const FinanceScreen: React.FC = () => {
                 { label: "Budgets", value: "budgets" },
               ]}
               selectedValue={activeTab}
-              onChange={(value) => setActiveTab(value as FinanceTab)}
+              onChange={(value) => handleTabChange(value as FinanceTab)}
             />
           </View>
           {/* Recent tx list - navigate to Transactions screen */}
@@ -298,10 +641,11 @@ export const FinanceScreen: React.FC = () => {
         <View style={styles.emptyState}>
           <Ionicons name="add-circle-outline" size={64} color={designTokens.textMuted} />
           <Text style={styles.emptyTitle}>Create your first wallet</Text>
-          <TouchableOpacity style={styles.createWalletBtn}>
+          <TouchableOpacity style={styles.createWalletBtn} onPress={openCreateWalletModal}>
             <Text style={styles.createWalletText}>NEW WALLET</Text>
           </TouchableOpacity>
         </View>
+        {renderCreateWalletModal()}
       </View>
     );
   }
@@ -309,6 +653,7 @@ export const FinanceScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ScrollView
+        ref={overviewScrollRef}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} />
@@ -482,15 +827,9 @@ export const FinanceScreen: React.FC = () => {
             </View>
           )}
         </View>
-
-        {/* Bottom spacer for FAB */}
-        <View style={styles.bottomSpacer} />
       </ScrollView>
-
-      {/* FAB - Add Transaction */}
-      <TouchableOpacity style={styles.fab} onPress={handleAddTransaction}>
-        <Ionicons name="add" size={28} color={designTokens.heroText} />
-      </TouchableOpacity>
+      {renderCreateWalletModal()}
+      {renderCreateGoalModal()}
     </View>
   );
 };
@@ -776,22 +1115,121 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // FAB
-  fab: {
-    position: "absolute",
-    bottom: spacing["2xl"],
-    right: spacing.xl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  // Create wallet modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: designTokens.surfaceCard,
+    borderRadius: 20,
+    padding: spacing["2xl"],
+    marginHorizontal: spacing.xl,
+    width: "100%",
+    maxWidth: 400,
+  },
+  modalTitle: {
+    ...typography.title,
+    color: designTokens.textPrimary,
+    textAlign: "center",
+    marginBottom: spacing.md,
+  },
+  modalError: {
+    color: designTokens.loss,
+    ...typography.caption,
+    marginBottom: spacing.md,
+    textAlign: "center",
+  },
+  modalLabel: {
+    ...typography.body,
+    color: designTokens.textSecondary,
+    fontWeight: "600",
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: designTokens.border,
+    borderRadius: 12,
+    padding: spacing.base,
+    ...typography.body,
+    color: designTokens.textPrimary,
+    backgroundColor: designTokens.surface,
+  },
+  currencyRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  currencyChip: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.base,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: designTokens.border,
+    backgroundColor: designTokens.surface,
+  },
+  currencyChipActive: {
+    backgroundColor: designTokens.primary,
+    borderColor: designTokens.primary,
+  },
+  currencyChipText: {
+    ...typography.body,
+    color: designTokens.textSecondary,
+    fontWeight: "600",
+  },
+  currencyChipTextActive: {
+    color: designTokens.heroText,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing["2xl"],
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: spacing.base,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: designTokens.border,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    ...typography.button,
+    color: designTokens.textSecondary,
+    fontWeight: "600",
+  },
+  modalCreateBtn: {
+    flex: 1,
+    paddingVertical: spacing.base,
+    borderRadius: 12,
     backgroundColor: designTokens.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: designTokens.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    minHeight: 48,
+  },
+  modalCreateBtnDisabled: {
+    opacity: 0.6,
+  },
+  modalCreateText: {
+    ...typography.button,
+    color: designTokens.heroText,
+    fontWeight: "600",
+  },
+  colorRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  colorChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  colorChipActive: {
+    borderColor: designTokens.textPrimary,
   },
 
   // Bottom spacer

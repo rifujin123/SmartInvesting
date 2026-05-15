@@ -6,6 +6,7 @@ import {
   BudgetDto,
   BudgetSummaryDto,
   CategoryDto,
+  DashboardSummaryDto,
   GoalDto,
   UpdateBudgetRequestDto,
   UpdateGoalRequestDto,
@@ -62,5 +63,14 @@ export const financeService = {
 
   deleteGoal(token: string, id: number) {
     return request<GoalDto>(`/api/goals/${id}`, { method: "DELETE", token });
+  },
+
+  getDashboardSummary(
+    token: string,
+    params: { month: number; year: number; refreshMarketPrices?: boolean },
+  ) {
+    const { month, year, refreshMarketPrices = false } = params;
+    const query = `?month=${month}&year=${year}&refreshMarketPrices=${refreshMarketPrices}`;
+    return request<DashboardSummaryDto>(`/api/dashboard${query}`, { token });
   },
 };
