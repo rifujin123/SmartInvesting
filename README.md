@@ -75,14 +75,3 @@ SmartInvestingAPI/
 ## API Modules
 
 Auth • Profile • Wallets • Transactions • Budgets • Goals • Categories • Assets • Investment Orders • Holdings • Dashboard
-
----
-
-## CV Highlights
-
-- Built full-stack finance management system using **ASP.NET Core 8**, **SQL Server**, and **React Native**.
-- Implemented **JWT authentication** with refresh-token session renewal and secure mobile token storage.
-- Designed **RESTful APIs** for wallets, transactions, budgets, goals, investment orders, and portfolio analytics.
-- Developed **React Native** app with feature-based architecture, typed service layer, and reusable UI components.
-- Integrated portfolio tracking with investment order flow, profit/loss calculations, and real-time updates.
-- Leveraged **AI-assisted development** (Claude) for architectural decisions and code patterns while maintaining full manual ownership of business logic.
