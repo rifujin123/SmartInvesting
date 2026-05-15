@@ -108,3 +108,9 @@ Desktop.ini
 # ---------- Misc ----------
 *.tmp
 *.log
+
+# ---------- Local large/generated assets ----------
+fireant.json
+logoSmart.png
+liquid_glass.md
+caveman/
