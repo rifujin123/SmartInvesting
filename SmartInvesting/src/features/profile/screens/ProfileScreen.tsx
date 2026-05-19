@@ -3,23 +3,17 @@ import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "rea
 import { Ionicons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
-import { colors } from "../../../theme/colors";
-import { spacing } from "../../../theme/spacing";
-import { typography } from "../../../theme/typography";
+import { useTheme } from "../../../theme/ThemeContext";
+import { spacing, typography } from "../../../theme/tokens";
 import { useAuth } from "../../../context/AuthContext";
 import { ApiError } from "../../../services/api/types";
-import { AppStackParamList } from "../../../shared/navigation/types";
-
-const stats = [
-  { label: "Portfolio Value", value: "28,450 VND" },
-  { label: "Wallet Balance", value: "5,000 VND" },
-  { label: "Member Since", value: "Jan 2024" },
-];
+import type { AppStackParamList } from "../../../shared/navigation/types";
 
 type ProfileNavigation = NativeStackNavigationProp<AppStackParamList, "Profile">;
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileNavigation>();
+  const { colors } = useTheme();
   const { accessToken, user, loadUser, logout } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,26 +44,26 @@ export const ProfileScreen: React.FC = () => {
   }, [user?.firstName, user?.lastName, user?.userName]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
+          <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surface }]} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profile</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
           <View style={styles.headerSpacer} />
         </View>
 
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           {user?.avatarUrl ? (
             <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
           ) : (
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={36} color="#FFFFFF" />
+            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+              <Ionicons name="person" size={36} color={colors.text} />
             </View>
           )}
-          <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.email}>{user?.email || "No email set"}</Text>
+          <Text style={[styles.name, { color: colors.text }]}>{displayName}</Text>
+          <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || "No email set"}</Text>
         </View>
 
         {(error || isLoading) && (
@@ -86,24 +80,28 @@ export const ProfileScreen: React.FC = () => {
             title="Personal Information"
             subtitle="Name, username, avatar"
             onPress={() => navigation.navigate("PersonalInformation")}
+            colors={colors}
           />
           <SectionCard
             icon="shield-checkmark"
             title="Security"
             subtitle="Email and password"
             onPress={() => navigation.navigate("Security")}
+            colors={colors}
           />
           <SectionCard
             icon="document-text-outline"
             title="Terms of Service"
             subtitle="Service rules and conditions"
             onPress={() => {}}
+            colors={colors}
           />
           <SectionCard
             icon="reader-outline"
             title="Terms of Use"
             subtitle="App usage guidelines"
             onPress={() => {}}
+            colors={colors}
           />
           <SectionCard
             icon="log-out-outline"
@@ -112,16 +110,23 @@ export const ProfileScreen: React.FC = () => {
             onPress={() => {
               void logout();
             }}
+            colors={colors}
           />
         </View>
 
-        <View style={styles.section}>
-          {stats.map((item) => (
-            <View key={item.label} style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{item.label}</Text>
-              <Text style={styles.infoValue}>{item.value}</Text>
-            </View>
-          ))}
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.cardBorder }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Member Since</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>Jan 2024</Text>
+          </View>
+          <View style={[styles.infoRow, { borderBottomColor: colors.cardBorder }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Account Status</Text>
+            <Text style={[styles.infoValue, { color: colors.gain }]}>Active</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Version</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>1.0.0</Text>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -133,18 +138,23 @@ interface SectionCardProps {
   title: string;
   subtitle: string;
   onPress: () => void;
+  colors: any;
 }
 
-const SectionCard: React.FC<SectionCardProps> = ({ icon, title, subtitle, onPress }) => (
-  <TouchableOpacity style={styles.sectionCard} onPress={onPress} activeOpacity={0.75}>
-    <View style={styles.sectionIcon}>
-      <Ionicons name={icon} size={24} color="#FFFFFF" />
+const SectionCard: React.FC<SectionCardProps> = ({ icon, title, subtitle, onPress, colors }) => (
+  <TouchableOpacity
+    style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+    onPress={onPress}
+    activeOpacity={0.75}
+  >
+    <View style={[styles.sectionIcon, { backgroundColor: colors.primary }]}>
+      <Ionicons name={icon} size={24} color={colors.text} />
     </View>
     <View style={styles.sectionTextBlock}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+      <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
     </View>
-    <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
+    <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
   </TouchableOpacity>
 );
 
@@ -155,7 +165,6 @@ function getErrorMessage(err: unknown, fallback: string) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: "row",
@@ -164,19 +173,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing["2xl"] + spacing.xl,
     paddingBottom: spacing.lg,
-    backgroundColor: colors.surfaceCard,
+    borderBottomWidth: 1,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.surface,
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
-    ...typography.title,
-    color: colors.textPrimary,
+    ...typography.heading.h1,
   },
   headerSpacer: {
     width: 40,
@@ -185,16 +192,13 @@ const styles = StyleSheet.create({
     margin: spacing.xl,
     padding: spacing.xl,
     borderRadius: 20,
-    backgroundColor: colors.surfaceCard,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.border,
   },
   avatar: {
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: colors.figma.primary,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -202,16 +206,13 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: colors.surface,
   },
   name: {
-    ...typography.title,
-    color: colors.textPrimary,
+    ...typography.heading.h1,
     marginTop: spacing.base,
   },
   email: {
-    ...typography.body,
-    color: colors.textSecondary,
+    ...typography.body.regular,
     marginTop: spacing.xs,
   },
   banner: {
@@ -230,13 +231,13 @@ const styles = StyleSheet.create({
     borderColor: "#FECACA",
   },
   bannerText: {
-    ...typography.body,
+    ...typography.body.regular,
   },
   successText: {
-    color: colors.success,
+    color: "#16A34A",
   },
   errorText: {
-    color: colors.loss,
+    color: "#DC2626",
   },
   sectionCards: {
     marginHorizontal: spacing.xl,
@@ -247,16 +248,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: spacing.lg,
-    backgroundColor: colors.surfaceCard,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   sectionIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.figma.primary,
     justifyContent: "center",
     alignItems: "center",
     marginRight: spacing.base,
@@ -265,21 +263,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sectionTitle: {
-    ...typography.sectionHeader,
-    color: colors.textPrimary,
+    ...typography.heading.h3,
   },
   sectionSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    ...typography.body.small,
     marginTop: spacing.xs,
   },
   section: {
     marginHorizontal: spacing.xl,
     marginBottom: spacing.xl,
-    backgroundColor: colors.surfaceCard,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
     overflow: "hidden",
   },
   infoRow: {
@@ -289,15 +283,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   infoLabel: {
-    ...typography.body,
-    color: colors.textSecondary,
+    ...typography.body.regular,
   },
   infoValue: {
-    ...typography.body,
+    ...typography.body.regular,
     fontWeight: "600",
-    color: colors.textPrimary,
   },
 });

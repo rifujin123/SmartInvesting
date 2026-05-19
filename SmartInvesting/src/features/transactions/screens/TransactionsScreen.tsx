@@ -1,329 +1,303 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { colors } from "../../../theme/colors";
-import { spacing } from "../../../theme/spacing";
-import { typography } from "../../../theme/typography";
-import { AppHeader } from "../../../shared/components";
-import { MoneyText } from "../../../components/finance/MoneyText";
-import { tokenStorage } from "../../../services/auth/tokenStorage";
-import { walletsService } from "../../../services/wallets/walletsService";
-import { transactionsService } from "../../../services/transactions/transactionsService";
-import type { TransactionDto } from "../../../services/transactions/types";
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native'
+import React, { useState } from 'react'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
-type FilterKey = "all" | "income" | "expense";
+type TxType = 'buy' | 'sell' | 'dividend' | 'deposit'
 
-const filters: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "income", label: "Income" },
-  { key: "expense", label: "Expense" },
-];
+interface Transaction {
+  id: string
+  month: string
+  type: TxType
+  title: string
+  detail: string
+  amount: string
+  shares: string
+  isPositive?: boolean
+}
 
-export const TransactionsScreen: React.FC = () => {
-  const [token, setToken] = useState<string | null>(null);
-  const [walletId, setWalletId] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<TransactionDto[]>([]);
-  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
-  const [refreshing, setRefreshing] = useState(false);
-  const [page, setPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+interface DateGroup {
+  month: string
+  items: Transaction[]
+}
 
-  const loadToken = useCallback(async () => {
-    const { accessToken } = await tokenStorage.getTokens();
-    if (accessToken) setToken(accessToken);
-  }, []);
+const TransactionsScreenComponent = () => {
+  const [activeFilter, setActiveFilter] = useState('All')
 
-  const loadWallets = useCallback(async () => {
-    if (!token) return;
-    try {
-      const { items } = await walletsService.getMyWallets(token);
-      if (items.length > 0) setWalletId(items[0].id);
-    } catch (e) {
-      console.error("loadWallets error", e);
+  const filters = ['All', 'Buys', 'Dividends', 'Deposits']
+
+  const transactions: Transaction[] = [
+    {
+      id: 'TX001',
+      month: 'May 2026',
+      type: 'buy',
+      title: 'Bought VTI',
+      detail: 'Vanguard Total Stock Market ETF',
+      amount: '-$1,078.10',
+      shares: '5 shares'
+    },
+    {
+      id: 'TX002',
+      month: 'May 2026',
+      type: 'buy',
+      title: 'Bought AAPL',
+      detail: 'Apple Inc.',
+      amount: '-$389.38',
+      shares: '2 shares'
+    },
+    {
+      id: 'TX003',
+      month: 'May 2026',
+      type: 'dividend',
+      title: 'Dividend: VTI',
+      detail: 'Quarterly payout',
+      amount: '+$3.42',
+      shares: 'Reinvested',
+      isPositive: true
+    },
+    {
+      id: 'TX004',
+      month: 'April 2026',
+      type: 'buy',
+      title: 'Bought VTI',
+      detail: 'Vanguard Total Stock Market ETF',
+      amount: '-$1,617.15',
+      shares: '7.483 shares'
+    },
+    {
+      id: 'TX005',
+      month: 'April 2026',
+      type: 'buy',
+      title: 'Bought AAPL',
+      detail: 'Apple Inc.',
+      amount: '-$1,207.04',
+      shares: '6.2 shares'
+    },
+    {
+      id: 'TX006',
+      month: 'March 2026',
+      type: 'dividend',
+      title: 'Dividend: VTI',
+      detail: 'Quarterly payout',
+      amount: '+$2.98',
+      shares: 'Reinvested',
+      isPositive: true
     }
-  }, [token]);
+  ]
 
-  const loadTransactions = useCallback(async () => {
-    if (!token || !walletId) return;
-    try {
-      const data = await transactionsService.getTransactionsByWallet(
-        token,
-        walletId,
-        page,
-        20,
-      );
-      setTransactions(data.items);
-      setTotalCount(data.totalCount);
-    } catch (e) {
-      console.error("loadTransactions error", e);
+  const groupedByMonth: DateGroup[] = transactions.reduce<DateGroup[]>((acc, tx) => {
+    const existing = acc.find(g => g.month === tx.month)
+    if (existing) {
+      existing.items.push(tx)
+    } else {
+      acc.push({ month: tx.month, items: [tx] })
     }
-  }, [token, walletId, page]);
+    return acc
+  }, [])
 
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    setPage(1);
-    await loadTransactions();
-    setRefreshing(false);
-  }, [loadTransactions]);
+  const getIconColor = (type: TxType): string => {
+    switch (type) {
+      case 'buy':
+        return '#e2f6d5'
+      case 'sell':
+        return '#fde8e8'
+      case 'dividend':
+        return 'rgba(56, 200, 255, 0.12)'
+      default:
+        return '#f0f0f0'
+    }
+  }
 
-  useEffect(() => {
-    loadToken();
-  }, [loadToken]);
+  const getIconSymbol = (type: TxType): string => {
+    switch (type) {
+      case 'buy':
+        return '↓'
+      case 'sell':
+        return '↑'
+      case 'dividend':
+        return '$'
+      default:
+        return '•'
+    }
+  }
 
-  useEffect(() => {
-    if (token) loadWallets();
-  }, [token, loadWallets]);
+  const renderTransaction = (tx: Transaction) => (
+    <TouchableOpacity key={tx.id} style={styles.txItem}>
+      <View style={[styles.txIcon, { backgroundColor: getIconColor(tx.type) }]}>
+        <Text style={styles.txIconText}>{getIconSymbol(tx.type)}</Text>
+      </View>
+      <View style={styles.txInfo}>
+        <Text style={styles.txTitle}>{tx.title}</Text>
+        <Text style={styles.txDetail}>{tx.detail}</Text>
+      </View>
+      <View style={styles.txAmount}>
+        <Text style={[styles.txPrice, tx.isPositive && styles.txPricePositive]}>
+          {tx.amount}
+        </Text>
+        <Text style={styles.txShares}>{tx.shares}</Text>
+      </View>
+    </TouchableOpacity>
+  )
 
-  useEffect(() => {
-    if (token && walletId) loadTransactions();
-  }, [token, walletId, page, loadTransactions]);
-
-  const filtered = activeFilter === "all"
-    ? transactions
-    : transactions.filter((t) =>
-        activeFilter === "income" ? t.amount >= 0 : t.amount < 0,
-      );
-
-  const totalFlow = filtered.reduce((sum, t) => sum + t.amount, 0);
-
-  const getTypeIcon = (t: TransactionDto): string => {
-    if (t.categoryIcon) return t.categoryIcon;
-    return t.amount >= 0 ? "arrow-down-circle" : "arrow-up-circle";
-  };
+  const renderDateGroup = (group: DateGroup) => (
+    <View key={group.month} style={styles.dateGroup}>
+      <Text style={styles.dateHeader}>{group.month}</Text>
+      {group.items.map(renderTransaction)}
+    </View>
+  )
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>History</Text>
+      </View>
+
       <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
-        }
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterContent}
       >
-        <AppHeader />
-
-        <View style={styles.overviewCard}>
-          <Text style={styles.eyebrow}>NET CASHFLOW</Text>
-          <MoneyText
-            amount={totalFlow}
-            size="xl"
-            color="default"
-            showSign
-            style={{ color: "#FFFFFF" }}
-          />
-          <Text style={styles.overviewCaption}>
-            {filtered.length} transactions
-          </Text>
-        </View>
-
-        <View style={styles.filterBar}>
-          {filters.map((filter) => (
-            <TouchableOpacity
-              key={filter.key}
+        {filters.map(filter => (
+          <TouchableOpacity
+            key={filter}
+            style={[
+              styles.filterTab,
+              activeFilter === filter && styles.filterTabActive
+            ]}
+            onPress={() => setActiveFilter(filter)}
+          >
+            <Text
               style={[
-                styles.filterChip,
-                activeFilter === filter.key && styles.filterChipActive,
+                styles.filterTabText,
+                activeFilter === filter && styles.filterTabTextActive
               ]}
-              onPress={() => setActiveFilter(filter.key)}
-              activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  styles.filterText,
-                  activeFilter === filter.key && styles.filterTextActive,
-                ]}
-              >
-                {filter.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.listCard}>
-          <View style={styles.listHeader}>
-            <Text style={styles.listLabel}>ENTRIES</Text>
-            <Text style={styles.listCount}>{filtered.length}</Text>
-          </View>
-
-          {filtered.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>No transactions found</Text>
-            </View>
-          ) : (
-            filtered.map((tx) => (
-              <View key={tx.id} style={styles.txRow}>
-                <View
-                  style={[
-                    styles.txIcon,
-                    {
-                      backgroundColor:
-                        tx.amount >= 0 ? "#DCFCE7" : "#FEE2E2",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={getTypeIcon(tx) as any}
-                    size={20}
-                    color={tx.amount >= 0 ? "#059669" : "#DC2626"}
-                  />
-                </View>
-                <View style={styles.txMiddle}>
-                  <Text style={styles.txTitle}>
-                    {tx.note || tx.categoryName}
-                  </Text>
-                  <Text style={styles.txSubtitle}>{tx.categoryName}</Text>
-                </View>
-                <View style={styles.txRight}>
-                  <MoneyText
-                    amount={tx.amount}
-                    size="md"
-                    color={tx.amount >= 0 ? "success" : "loss"}
-                    showSign
-                  />
-                  <Text style={styles.txDate}>
-                    {new Date(tx.transactionDate).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
+              {filter}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
-    </View>
-  );
-};
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {groupedByMonth.map(renderDateGroup)}
+        <View style={styles.spacer} />
+      </ScrollView>
+    </SafeAreaView>
+  )
+}
+
+export const TransactionsScreen = TransactionsScreenComponent
+export default TransactionsScreenComponent
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.figma.surface },
-  overviewCard: {
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: colors.figma.appBg,
-    borderRadius: 20,
-    shadowColor: "#2563EB",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#fff'
   },
-  eyebrow: {
-    ...typography.body,
-    color: "#DBEAFE",
-    fontWeight: "600",
-    letterSpacing: 0.5,
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0'
   },
-  overviewCaption: {
-    ...typography.body,
-    color: "#93C5FD",
-    marginTop: spacing.xs,
-    fontWeight: "500",
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#0e0f0c'
   },
-  filterBar: {
-    flexDirection: "row",
-    paddingHorizontal: spacing.xl,
-    marginTop: spacing.lg,
-    gap: spacing.sm,
+  filterScroll: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    flexGrow: 0
   },
-  filterChip: {
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surfaceCard,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
+  filterContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8
   },
-  filterChipActive: {
-    backgroundColor: colors.figma.appBg,
-    borderColor: colors.figma.appBg,
-  },
-  filterText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  filterTextActive: {
-    color: "#FFFFFF",
-  },
-  listCard: {
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.lg,
-    marginBottom: 120,
-    backgroundColor: colors.surfaceCard,
+  filterTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: '#f5f5f5'
   },
-  listHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  filterTabActive: {
+    backgroundColor: '#0e0f0c'
   },
-  listLabel: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: "700",
+  filterTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0e0f0c'
   },
-  listCount: {
-    ...typography.body,
-    color: colors.textMuted,
-    fontWeight: "600",
+  filterTabTextActive: {
+    color: '#fff'
   },
-  emptyBox: {
-    padding: spacing.xl,
-    alignItems: "center",
+  content: {
+    flex: 1
   },
-  emptyText: {
-    ...typography.body,
-    color: colors.textMuted,
+  dateGroup: {
+    paddingVertical: 16
   },
-  txRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.md,
+  dateHeader: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#999',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5
+  },
+  txItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
   },
   txIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
   },
-  txMiddle: { flex: 1, gap: 2 },
+  txIconText: {
+    fontSize: 18,
+    fontWeight: '600'
+  },
+  txInfo: {
+    flex: 1
+  },
   txTitle: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: "600",
+    fontWeight: '600',
+    fontSize: 15,
+    color: '#0e0f0c',
+    marginBottom: 2
   },
-  txSubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
+  txDetail: {
     fontSize: 13,
+    color: '#999'
   },
-  txRight: { alignItems: "flex-end", gap: 2 },
-  txDate: {
-    ...typography.body,
-    color: colors.textMuted,
-    fontSize: 12,
+  txAmount: {
+    alignItems: 'flex-end',
+    flexShrink: 0
   },
-});
+  txPrice: {
+    fontWeight: '600',
+    fontSize: 15,
+    color: '#0e0f0c',
+    marginBottom: 2
+  },
+  txPricePositive: {
+    color: '#34c759'
+  },
+  txShares: {
+    fontSize: 13,
+    color: '#999'
+  },
+  spacer: {
+    height: 20
+  }
+})

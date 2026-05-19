@@ -1,0 +1,11 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://vip.digishop.work",
+    "ANTHROPIC_AUTH_TOKEN": "sk-NixQwBKqDhtxtuDVWyFzB1CffaIXlsPCnQWZOAsptevY6KiJ",
+    "ANTHROPIC_MODEL": "gpt-5.5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "gpt-5.5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "gpt-5.5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-5.5",
+    "CCS_DROID_PROVIDER": "openai"
+  }
+}

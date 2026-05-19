@@ -1,0 +1,264 @@
+﻿/* SmartInvest — Wise-Inspired Design System */
+/* Shared tokens for all platforms */
+
+:root {
+  /* Brand Colors — Wise-inspired */
+  --bg:            #ffffff;
+  --bg-off:        #f5f6f3;
+  --surface:       #ffffff;
+  --fg:            #0e0f0c;
+  --muted:         #868685;
+  --muted-dark:    #454745;
+  --border:        rgba(14, 15, 12, 0.12);
+  --border-strong: rgba(14, 15, 12, 0.20);
+  --accent:        #9fe870;
+  --accent-dark:   #163300;
+  --accent-light:  #e2f6d5;
+  --accent-pastel: #cdffad;
+  --danger:        #d03238;
+  --danger-light:  #fde8e8;
+  --warning:       #ffd11a;
+  --success:       #054d28;
+  --success-light: #e2f6d5;
+  --info-bg:       rgba(56, 200, 255, 0.10);
+
+  /* Typography */
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono:    ui-monospace, 'SF Mono', 'Menlo', monospace;
+
+  /* Spacing */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* Radius */
+  --r-sm:   10px;
+  --r-md:   16px;
+  --r-lg:   30px;
+  --r-xl:   40px;
+  --r-pill: 9999px;
+  --r-full: 50%;
+
+  /* Shadows */
+  --shadow-ring:  rgba(14, 15, 12, 0.12) 0px 0px 0px 1px;
+  --shadow-card:  rgba(14, 15, 12, 0.06) 0px 2px 8px 0px;
+  --shadow-float: rgba(14, 15, 12, 0.12) 0px 4px 16px 0px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration: 200ms;
+
+  /* Safe areas */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+}
+
+/* Reset */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.44;
+  color: var(--fg);
+  background: var(--bg);
+  font-feature-settings: "calt" 1;
+  overflow-x: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; }
+input, textarea, select { font: inherit; color: inherit; }
+
+/* Utility Classes */
+.text-display {
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-feature-settings: "calt" 1;
+}
+
+.text-body { font-weight: 400; }
+.text-semibold { font-weight: 600; }
+.text-muted { color: var(--muted); }
+.text-accent-dark { color: var(--accent-dark); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  font-feature-settings: "calt" 1;
+  transition: transform var(--duration) var(--ease-out), background var(--duration);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active { transform: scale(0.95); }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-dark);
+  padding: 14px 28px;
+  font-size: 17px;
+}
+
+.btn-primary:hover { transform: scale(1.02); }
+
+.btn-secondary {
+  background: rgba(22, 51, 0, 0.08);
+  color: var(--fg);
+  padding: 12px 20px;
+  font-size: 15px;
+}
+
+.btn-secondary:hover { background: rgba(22, 51, 0, 0.12); }
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.btn-icon {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: var(--r-full);
+}
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  transition: border-color var(--duration);
+}
+
+.card:hover { border-color: var(--border-strong); }
+
+.card-flat {
+  background: var(--bg-off);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 600;
+  font-feature-settings: "calt" 1;
+}
+
+.badge-success {
+  background: var(--accent-light);
+  color: var(--success);
+}
+
+.badge-danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.badge-neutral {
+  background: var(--bg-off);
+  color: var(--muted-dark);
+}
+
+/* Input */
+.input-field {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: 16px;
+  transition: border-color var(--duration), box-shadow var(--duration);
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: rgb(134, 134, 133) 0px 0px 0px 1px inset;
+}
+
+.input-field::placeholder {
+  color: var(--muted);
+}
+
+/* Dividers */
+.divider {
+  height: 1px;
+  background: var(--border);
+  border: none;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+.animate-in {
+  animation: fadeIn 0.4s var(--ease-out) both;
+}
+
+/* Stagger children */
+.stagger > * {
+  animation: fadeIn 0.4s var(--ease-out) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.0s; }
+.stagger > *:nth-child(2) { animation-delay: 0.05s; }
+.stagger > *:nth-child(3) { animation-delay: 0.10s; }
+.stagger > *:nth-child(4) { animation-delay: 0.15s; }
+.stagger > *:nth-child(5) { animation-delay: 0.20s; }
+.stagger > *:nth-child(6) { animation-delay: 0.25s; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Number formatting */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

@@ -17,7 +17,7 @@ import { getStocks, searchAssets } from "../../../services/assets/assetService";
 import { AssetSearchResult } from "../../../services/assets/types";
 
 type BuyAssetsScreenProps = NativeStackScreenProps<AppStackParamList, "BuyAssets">;
-type StockListItem = AssetSearchResult & { id: string };
+type StockListItem = Omit<AssetSearchResult, 'id'> & { id: string };
 
 const STOCK_PAGE_SIZE = 20;
 const NAVY = "#070A43";

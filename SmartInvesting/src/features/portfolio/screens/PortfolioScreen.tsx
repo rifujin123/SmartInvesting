@@ -12,24 +12,24 @@ import {
   FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors } from "../../../theme/colors";
-import { spacing } from "../../../theme/spacing";
-import { typography } from "../../../theme/typography";
-import { AppHeader } from "../../../shared/components";
-import { formatCurrency, formatNumber } from "../../../shared/utils/formatCurrency";
+import { useTheme } from "../../../theme/ThemeContext";
+import { spacing, typography } from "../../../theme/tokens";
+import { formatVnd } from "../../../utils/formatCurrency";
 import { getStocks, searchAssets } from "../../../services/assets/assetService";
 import { AssetSearchResult } from "../../../services/assets/types";
 import { transactionsService } from "../../../services/transactions/transactionsService";
-import { useAuth } from "../../../context/AuthContext";
+import { tokenStorage } from "../../../services/auth/tokenStorage";
 import { walletsService } from "../../../services/wallets/walletsService";
 import { dashboardService } from "../../../services/dashboard/dashboardService";
 import type { WalletDto } from "../../../services/wallets/types";
 import type { DashboardSummaryDto } from "../../../services/dashboard/dashboardService";
+import { ShimmerBar } from "../../../components/finance";
 
 interface PortfolioScreenProps {}
 
 export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
-  const { accessToken } = useAuth();
+  const { colors } = useTheme();
+  const [token, setToken] = useState<string | null>(null);
   const [activeWallet, setActiveWallet] = useState<WalletDto | null>(null);
   const [summary, setSummary] = useState<DashboardSummaryDto | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "stock" | "etf" | "gold">("all");
@@ -46,10 +46,11 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
   const [buyPrice, setBuyPrice] = useState("");
   const [buyLoading, setBuyLoading] = useState(false);
 
-  // Load wallet + summary on mount
   useEffect(() => {
     const loadData = async () => {
+      const { accessToken } = await tokenStorage.getTokens();
       if (!accessToken) return;
+      setToken(accessToken);
       try {
         const [walletsRes, summaryRes] = await Promise.all([
           walletsService.getMyWallets(accessToken),
@@ -64,7 +65,7 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
       }
     };
     loadData();
-  }, [accessToken]);
+  }, []);
 
   const loadAssets = useCallback(
     async (reset = false) => {
@@ -109,11 +110,10 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
     setRefreshing(true);
     setPage(1);
     loadAssets(true);
-    // Reload summary on refresh
-    if (accessToken) {
-      dashboardService.getSummary(accessToken).then(setSummary).catch(console.error);
+    if (token) {
+      dashboardService.getSummary(token).then(setSummary).catch(console.error);
     }
-  }, [loadAssets, accessToken]);
+  }, [loadAssets, token]);
 
   const handleLoadMore = () => {
     if (!loading && hasMore) {
@@ -123,7 +123,6 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
 
   const handleBuy = (asset: AssetSearchResult) => {
     if (!activeWallet) {
-      // TODO: show toast "Create wallet first"
       return;
     }
     setSelectedAsset(asset);
@@ -134,25 +133,22 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
   };
 
   const handleConfirmBuy = async () => {
-    if (!accessToken || !activeWallet || !selectedAsset) return;
+    if (!token || !activeWallet || !selectedAsset) return;
     try {
       setBuyLoading(true);
       const amount = parseFloat(buyAmount) || parseFloat(buyShares) * parseFloat(buyPrice);
       if (amount <= 0) {
-        // TODO: show error toast
         return;
       }
-      await transactionsService.createTransaction(accessToken, activeWallet.id, {
+      await transactionsService.createTransaction(token, activeWallet.id, {
         amount: -amount,
         note: `Buy ${selectedAsset.symbol}`,
         categoryId: 0,
         assetId: selectedAsset.id,
       });
       setShowBuyModal(false);
-      // TODO: show success toast
     } catch (error) {
       console.error("Buy failed:", error);
-      // TODO: show error toast
     } finally {
       setBuyLoading(false);
     }
@@ -162,61 +158,70 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
 
   const renderTab = (tab: "all" | "stock" | "etf" | "gold", label: string) => (
     <TouchableOpacity
-      style={[styles.tab, activeTab === tab && styles.tabActive]}
+      style={[
+        styles.tab,
+        { borderColor: colors.cardBorder },
+        activeTab === tab && [styles.tabActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
+      ]}
       onPress={() => setActiveTab(tab)}
       activeOpacity={0.7}
     >
-      <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{label}</Text>
+      <Text style={[styles.tabText, { color: activeTab === tab ? colors.text : colors.textSecondary }]}>{label}</Text>
     </TouchableOpacity>
   );
 
   const renderAssetItem = ({ item }: { item: AssetSearchResult }) => (
     <TouchableOpacity
-      style={styles.assetCard}
+      style={[styles.assetCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
       onPress={() => handleBuy(item)}
       activeOpacity={0.7}
     >
       <View style={styles.assetLeft}>
-        <View style={styles.assetIcon}>
+        <View style={[styles.assetIcon, { backgroundColor: colors.surface }]}>
           <Ionicons name="trending-up" size={20} color={colors.primary} />
         </View>
         <View style={styles.assetInfo}>
-          <Text style={styles.assetName}>{item.name}</Text>
-          <Text style={styles.assetSymbol}>{item.symbol}</Text>
+          <Text style={[styles.assetName, { color: colors.text }]}>{item.name}</Text>
+          <Text style={[styles.assetSymbol, { color: colors.textSecondary }]}>{item.symbol}</Text>
         </View>
       </View>
       <View style={styles.assetRight}>
-        <Text style={styles.assetPrice}>{formatCurrency(item.latestPrice || 0)}</Text>
+        <Text style={[styles.assetPrice, { color: colors.text }]}>{formatVnd(item.latestPrice || 0)}</Text>
         <TouchableOpacity
-          style={styles.buyBtn}
+          style={[styles.buyBtn, { backgroundColor: colors.primary }]}
           onPress={() => handleBuy(item)}
           activeOpacity={0.7}
         >
-          <Text style={styles.buyBtnText}>Buy</Text>
+          <Text style={[styles.buyBtnText, { color: colors.text }]}>Buy</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 
+  const renderShimmer = () => (
+    <View style={styles.skeletonStack}>
+      <ShimmerBar width="100%" height={160} borderRadius={16} />
+      <ShimmerBar width="100%" height={50} borderRadius={12} style={{ marginTop: spacing.lg }} />
+      <ShimmerBar width="100%" height={200} borderRadius={16} style={{ marginTop: spacing.lg }} />
+    </View>
+  );
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <AppHeader />
-
-        {/* Hero Card */}
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.heroHeader}>
             <View style={styles.heroRow}>
-              <Text style={styles.heroLabel}>Portfolio Value</Text>
+              <Text style={[styles.heroLabel, { color: colors.text }]}>Portfolio Value</Text>
               <TouchableOpacity>
-                <Text style={styles.chiTietText}>Details</Text>
+                <Text style={[styles.chiTietText, { color: colors.primary }]}>Details</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.heroTitle}>
-              {summary ? formatNumber(summary.totalWealth) : "---"} <Text style={styles.currencyText}>VND</Text>
+            <Text style={[styles.heroTitle, { color: colors.text }]}>
+              {summary ? formatVnd(summary.totalWealth) : "---"}
             </Text>
             <View style={styles.profitLossRow}>
               <Text
@@ -224,15 +229,15 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
                   styles.profitLossText,
                   {
                     color: !summary
-                      ? colors.success
+                      ? colors.gain
                       : summary.portfolioProfitLoss >= 0
-                      ? colors.success
+                      ? colors.gain
                       : colors.loss,
                   },
                 ]}
               >
                 {summary
-                  ? `${summary.portfolioProfitLoss >= 0 ? "+" : ""}${formatNumber(
+                  ? `${summary.portfolioProfitLoss >= 0 ? "+" : ""}${formatVnd(
                       summary.portfolioProfitLoss
                     )}`
                   : "---"}
@@ -242,9 +247,9 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
                   styles.percentBadge,
                   {
                     borderColor: !summary
-                      ? colors.success
+                      ? colors.gain
                       : summary.portfolioProfitLoss >= 0
-                      ? colors.success
+                      ? colors.gain
                       : colors.loss,
                   },
                 ]}
@@ -254,9 +259,9 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
                     styles.percentText,
                     {
                       color: !summary
-                        ? colors.success
+                        ? colors.gain
                         : summary.portfolioProfitLoss >= 0
-                        ? colors.success
+                        ? colors.gain
                         : colors.loss,
                     },
                   ]}
@@ -268,28 +273,28 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
               </View>
             </View>
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
           <View style={styles.cashRow}>
-            <Text style={styles.cashLabel}>Cash: <Text style={styles.cashValue}>{summary ? formatNumber(summary.totalWealth - summary.portfolioNav) : "---"}</Text></Text>
-            <TouchableOpacity style={styles.napTienBtn}>
-              <Text style={styles.napTienText}>Deposit</Text>
+            <Text style={[styles.cashLabel, { color: colors.textSecondary }]}>
+              Cash: <Text style={[styles.cashValue, { color: colors.text }]}>{summary ? formatVnd(summary.totalWealth - summary.portfolioNav) : "---"}</Text>
+            </Text>
+            <TouchableOpacity style={[styles.napTienBtn, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.napTienText, { color: colors.text }]}>Deposit</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
+        <View style={[styles.searchContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search assets..."
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
 
-        {/* Filter Tabs */}
         <View style={styles.filterContainer}>
           <ScrollView
             horizontal
@@ -303,16 +308,13 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
           </ScrollView>
         </View>
 
-        {/* Assets List */}
         <View style={styles.section}>
           {loading && assets.length === 0 ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
+            renderShimmer()
           ) : filteredAssets.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="search-outline" size={48} color={colors.textMuted} />
-              <Text style={styles.emptyText}>No assets found</Text>
+              <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No assets found</Text>
             </View>
           ) : (
             <FlatList
@@ -334,26 +336,25 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
         </View>
       </ScrollView>
 
-      {/* Buy Modal */}
       <Modal visible={showBuyModal} transparent animationType="slide" onRequestClose={() => setShowBuyModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.buyModalContent}>
-            <View style={styles.modalHandle} />
+          <View style={[styles.buyModalContent, { backgroundColor: colors.card }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.cardBorder }]} />
             {selectedAsset && (
               <>
-                <Text style={styles.modalTitle}>Buy {selectedAsset.symbol}</Text>
-                <View style={styles.modalAssetInfo}>
-                  <Text style={styles.modalAssetName}>{selectedAsset.name}</Text>
-                  <Text style={styles.modalAssetPrice}>{formatCurrency(selectedAsset.latestPrice || 0)}</Text>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Buy {selectedAsset.symbol}</Text>
+                <View style={[styles.modalAssetInfo, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.modalAssetName, { color: colors.textSecondary }]}>{selectedAsset.name}</Text>
+                  <Text style={[styles.modalAssetPrice, { color: colors.text }]}>{formatVnd(selectedAsset.latestPrice || 0)}</Text>
                 </View>
 
                 <View style={styles.modalInputGroup}>
-                  <Text style={styles.modalInputLabel}>Amount (VND)</Text>
-                  <View style={styles.modalInputContainer}>
+                  <Text style={[styles.modalInputLabel, { color: colors.text }]}>Amount (VND)</Text>
+                  <View style={[styles.modalInputContainer, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
                     <TextInput
-                      style={styles.modalInput}
+                      style={[styles.modalInput, { color: colors.text }]}
                       placeholder="0"
-                      placeholderTextColor={colors.textMuted}
+                      placeholderTextColor={colors.textSecondary}
                       keyboardType="decimal-pad"
                       value={buyAmount}
                       onChangeText={setBuyAmount}
@@ -361,15 +362,15 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
                   </View>
                 </View>
 
-                <View style={styles.modalDivider} />
+                <View style={[styles.modalDivider, { backgroundColor: colors.cardBorder }]} />
 
                 <View style={styles.modalInputGroup}>
-                  <Text style={styles.modalInputLabel}>Shares</Text>
-                  <View style={styles.modalInputContainer}>
+                  <Text style={[styles.modalInputLabel, { color: colors.text }]}>Shares</Text>
+                  <View style={[styles.modalInputContainer, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
                     <TextInput
-                      style={styles.modalInput}
+                      style={[styles.modalInput, { color: colors.text }]}
                       placeholder="0"
-                      placeholderTextColor={colors.textMuted}
+                      placeholderTextColor={colors.textSecondary}
                       keyboardType="decimal-pad"
                       value={buyShares}
                       onChangeText={setBuyShares}
@@ -378,12 +379,12 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
                 </View>
 
                 <View style={styles.modalInputGroup}>
-                  <Text style={styles.modalInputLabel}>Price per Share</Text>
-                  <View style={styles.modalInputContainer}>
+                  <Text style={[styles.modalInputLabel, { color: colors.text }]}>Price per Share</Text>
+                  <View style={[styles.modalInputContainer, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
                     <TextInput
-                      style={styles.modalInput}
+                      style={[styles.modalInput, { color: colors.text }]}
                       placeholder="0"
-                      placeholderTextColor={colors.textMuted}
+                      placeholderTextColor={colors.textSecondary}
                       keyboardType="decimal-pad"
                       value={buyPrice}
                       onChangeText={setBuyPrice}
@@ -394,21 +395,21 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
-                    style={[styles.modalBtn, styles.modalBtnCancel]}
+                    style={[styles.modalBtn, styles.modalBtnCancel, { backgroundColor: colors.surface }]}
                     onPress={() => setShowBuyModal(false)}
                     disabled={buyLoading}
                   >
-                    <Text style={styles.modalBtnCancelText}>Cancel</Text>
+                    <Text style={[styles.modalBtnCancelText, { color: colors.textSecondary }]}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.modalBtn, styles.modalBtnConfirm]}
+                    style={[styles.modalBtn, styles.modalBtnConfirm, { backgroundColor: colors.primary }]}
                     onPress={handleConfirmBuy}
                     disabled={buyLoading}
                   >
                     {buyLoading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={colors.text} />
                     ) : (
-                      <Text style={styles.modalBtnConfirmText}>Confirm Buy</Text>
+                      <Text style={[styles.modalBtnConfirmText, { color: colors.text }]}>Confirm Buy</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -424,16 +425,17 @@ export const PortfolioScreen: React.FC<PortfolioScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  skeletonStack: {
+    paddingHorizontal: spacing.xl,
+    gap: spacing.base,
   },
   heroCard: {
     marginHorizontal: spacing.xl,
     marginTop: spacing.lg,
     padding: spacing.lg,
-    backgroundColor: colors.background,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.borderLight,
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -451,23 +453,15 @@ const styles = StyleSheet.create({
   heroLabel: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#1e293b",
   },
   chiTietText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#2563eb",
   },
   heroTitle: {
     fontSize: 32,
     fontWeight: "800",
-    color: "#1e293b",
     marginTop: spacing.sm,
-  },
-  currencyText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1e293b",
   },
   profitLossRow: {
     flexDirection: "row",
@@ -491,7 +485,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: colors.borderLight,
     marginVertical: spacing.base,
   },
   cashRow: {
@@ -501,20 +494,16 @@ const styles = StyleSheet.create({
   },
   cashLabel: {
     fontSize: 16,
-    color: "#64748b",
   },
   cashValue: {
     fontWeight: "600",
-    color: "#1e293b",
   },
   napTienBtn: {
-    backgroundColor: "#1d4ed8",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 25,
   },
   napTienText: {
-    color: "#fff",
     fontWeight: "700",
     fontSize: 16,
   },
@@ -523,10 +512,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.surfaceCard,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing.base,
   },
   searchIcon: {
@@ -535,8 +522,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     paddingVertical: spacing.base,
-    ...typography.body,
-    color: colors.textPrimary,
+    ...typography.body.regular,
   },
   filterContainer: {
     marginTop: spacing.base,
@@ -548,33 +534,20 @@ const styles = StyleSheet.create({
   tab: {
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surfaceCard,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   tabActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    borderWidth: 1,
   },
   tabText: {
-    ...typography.caption,
+    ...typography.body.small,
     fontWeight: "500",
-    color: colors.textSecondary,
-  },
-  tabTextActive: {
-    color: colors.heroText,
-    fontWeight: "600",
   },
   section: {
     paddingHorizontal: spacing.xl,
     marginTop: spacing.lg,
     marginBottom: spacing.xl,
-  },
-  loadingContainer: {
-    paddingVertical: spacing.xl,
-    justifyContent: "center",
-    alignItems: "center",
   },
   emptyContainer: {
     paddingVertical: spacing.xl,
@@ -582,8 +555,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyText: {
-    ...typography.body,
-    color: colors.textMuted,
+    ...typography.body.regular,
     marginTop: spacing.base,
   },
   assetCard: {
@@ -592,10 +564,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: spacing.base,
     paddingHorizontal: spacing.base,
-    backgroundColor: colors.surfaceCard,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: spacing.sm,
   },
   assetLeft: {
@@ -607,7 +577,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
     marginRight: spacing.base,
@@ -616,13 +585,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   assetName: {
-    ...typography.body,
+    ...typography.body.regular,
     fontWeight: "500",
-    color: colors.textPrimary,
   },
   assetSymbol: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    ...typography.body.small,
     marginTop: 2,
   },
   assetRight: {
@@ -630,20 +597,17 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   assetPrice: {
-    ...typography.body,
+    ...typography.body.regular,
     fontWeight: "600",
-    color: colors.textPrimary,
   },
   buyBtn: {
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: 8,
   },
   buyBtnText: {
-    ...typography.caption,
+    ...typography.body.small,
     fontWeight: "600",
-    color: colors.heroText,
   },
   loadMoreContainer: {
     paddingVertical: spacing.base,
@@ -652,11 +616,10 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: colors.overlay,
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   buyModalContent: {
-    backgroundColor: colors.surfaceCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: spacing.xl,
@@ -665,57 +628,47 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 36,
     height: 4,
-    backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: spacing.base,
   },
   modalTitle: {
-    ...typography.title,
-    color: colors.textPrimary,
+    ...typography.heading.h2,
     textAlign: "center",
     marginBottom: spacing.base,
   },
   modalAssetInfo: {
-    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: spacing.base,
     marginBottom: spacing.lg,
   },
   modalAssetName: {
-    ...typography.body,
-    color: colors.textSecondary,
+    ...typography.body.regular,
   },
   modalAssetPrice: {
-    ...typography.sectionHeader,
-    color: colors.textPrimary,
+    ...typography.heading.h3,
     marginTop: spacing.sm,
   },
   modalInputGroup: {
     marginBottom: spacing.base,
   },
   modalInputLabel: {
-    ...typography.body,
+    ...typography.body.regular,
     fontWeight: "500",
-    color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   modalInputContainer: {
-    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   modalInput: {
     fontSize: 18,
     fontWeight: "600",
-    color: colors.textPrimary,
     padding: spacing.base,
     textAlign: "center",
   },
   modalDivider: {
     height: 1,
-    backgroundColor: colors.border,
     marginVertical: spacing.base,
   },
   modalButtons: {
@@ -730,18 +683,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  modalBtnCancel: {
-    backgroundColor: colors.surface,
-  },
+  modalBtnCancel: {},
   modalBtnCancelText: {
-    ...typography.button,
-    color: colors.textSecondary,
+    ...typography.label.large,
   },
-  modalBtnConfirm: {
-    backgroundColor: colors.primary,
-  },
+  modalBtnConfirm: {},
   modalBtnConfirmText: {
-    ...typography.button,
-    color: colors.heroText,
+    ...typography.label.large,
   },
 });

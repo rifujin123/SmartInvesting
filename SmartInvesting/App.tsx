@@ -4,6 +4,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RootNavigator } from "./src/shared/navigation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthProvider } from "./src/context/AuthContext";
+import { ThemeProvider } from "./src/theme";
 
 const ONBOARDING_KEY = "@smartinvesting_onboarding_completed";
 
@@ -40,11 +41,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="light" />
-        <RootNavigator
-          initialOnboarding={showOnboarding}
-          onOnboardingComplete={handleOnboardingComplete}
-        />
+        <ThemeProvider>
+          <StatusBar style="light" />
+          <RootNavigator
+            initialOnboarding={showOnboarding}
+            onOnboardingComplete={handleOnboardingComplete}
+          />
+        </ThemeProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

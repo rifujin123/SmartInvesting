@@ -10,9 +10,8 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors } from "../../../theme/colors";
-import { spacing } from "../../../theme/spacing";
-import { typography } from "../../../theme/typography";
+import { useTheme } from "../../../theme/ThemeContext";
+import { spacing, typography } from "../../../theme/tokens";
 import { MoneyText } from "../../../components/finance/MoneyText";
 import { tokenStorage } from "../../../services/auth/tokenStorage";
 import { financeService } from "../../../services/finance/financeService";
@@ -27,15 +26,16 @@ const monthNames = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-const getTone = (ratio: number) => {
+const getTone = (ratio: number, colors: any) => {
   if (ratio >= 0.9) return colors.loss;
-  if (ratio >= 0.7) return colors.expenseAccent;
-  return colors.success;
+  if (ratio >= 0.7) return colors.warning;
+  return colors.gain;
 };
 
 const now = new Date();
 
 export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
+  const { colors } = useTheme();
   const [token, setToken] = useState<string | null>(null);
   const [budgets, setBudgets] = useState<BudgetSummaryDto[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -178,11 +178,11 @@ export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
   const renderModal = () => (
     <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={closeModal}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>{editingBudget ? "Edit Budget" : "Create Budget"}</Text>
+        <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>{editingBudget ? "Edit Budget" : "Create Budget"}</Text>
           {modalError ? <Text style={styles.modalError}>{modalError}</Text> : null}
 
-          <Text style={styles.modalLabel}>Category</Text>
+          <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
             {categories.map((category) => {
               const disabled = existingCategoryIds.has(category.id);
@@ -191,7 +191,8 @@ export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
                   key={category.id}
                   style={[
                     styles.categoryChip,
-                    selectedCategoryId === category.id && styles.categoryChipActive,
+                    { borderColor: colors.cardBorder, backgroundColor: colors.surface2 },
+                    selectedCategoryId === category.id && [styles.categoryChipActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
                     disabled && styles.categoryChipDisabled,
                   ]}
                   onPress={() => !disabled && setSelectedCategoryId(category.id)}
@@ -205,7 +206,8 @@ export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
                   <Text
                     style={[
                       styles.categoryChipText,
-                      selectedCategoryId === category.id && styles.categoryChipTextActive,
+                      { color: colors.textSecondary },
+                      selectedCategoryId === category.id && [styles.categoryChipTextActive, { color: "#FFFFFF" }],
                     ]}
                   >
                     {category.name}
@@ -215,9 +217,9 @@ export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
             })}
           </ScrollView>
 
-          <Text style={styles.modalLabel}>Budget amount</Text>
+          <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Budget amount</Text>
           <TextInput
-            style={styles.modalInput}
+            style={[styles.modalInput, { borderColor: colors.cardBorder, color: colors.text, backgroundColor: colors.surface2 }]}
             value={amountLimit}
             onChangeText={setAmountLimit}
             placeholder="5000000"
@@ -225,15 +227,15 @@ export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
             editable={!submitting}
           />
 
-          <Text style={styles.currentPeriodText}>
+          <Text style={[styles.currentPeriodText, { color: colors.textTertiary }]}>
             Applied to {monthNames[currentMonth - 1]} {currentYear}
           </Text>
 
           <View style={styles.modalActions}>
-            <TouchableOpacity style={styles.modalCancelBtn} onPress={closeModal} disabled={submitting}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
+            <TouchableOpacity style={[styles.modalCancelBtn, { borderColor: colors.cardBorder }]} onPress={closeModal} disabled={submitting}>
+              <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalSaveBtn, submitting && styles.disabledBtn]} onPress={submitBudget} disabled={submitting}>
+            <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: colors.primary }, submitting && styles.disabledBtn]} onPress={submitBudget} disabled={submitting}>
               {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.modalSaveText}>Save</Text>}
             </TouchableOpacity>
           </View>
@@ -245,7 +247,7 @@ export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
   if (loading) {
     return (
       <View style={styles.wrapper}>
-        <ActivityIndicator color={colors.figma.appBg} />
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
@@ -254,7 +256,7 @@ export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
     return (
       <View style={styles.wrapper}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.addButton} onPress={loadData}>
+        <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.primary }]} onPress={loadData}>
           <Text style={styles.addButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -263,64 +265,64 @@ export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.headerCard}>
-        <Text style={styles.eyebrow}>MONTHLY BUDGET</Text>
+      <View style={[styles.headerCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>MONTHLY BUDGET</Text>
         <View style={styles.summaryRow}>
           <View>
-            <Text style={styles.summaryLabel}>SPENT</Text>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>SPENT</Text>
             <MoneyText amount={totalSpent} size="lg" color="loss" />
           </View>
           <View style={styles.summaryRight}>
-            <Text style={styles.summaryLabel}>LIMIT</Text>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>LIMIT</Text>
             <MoneyText amount={totalLimit} size="lg" />
           </View>
         </View>
-        <View style={styles.masterBar}>
-          <View style={[styles.masterFill, { width: `${Math.min(ratio * 100, 100)}%`, backgroundColor: getTone(ratio) }]} />
+        <View style={[styles.masterBar, { backgroundColor: colors.surface2 }]}>
+          <View style={[styles.masterFill, { width: `${Math.min(ratio * 100, 100)}%`, backgroundColor: getTone(ratio, colors) }]} />
         </View>
-        <Text style={[styles.ratioText, { color: getTone(ratio) }]}>{Math.round(ratio * 100)}% USED</Text>
+        <Text style={[styles.ratioText, { color: getTone(ratio, colors) }]}>{Math.round(ratio * 100)}% USED</Text>
       </View>
 
       <View style={styles.listHeader}>
-        <Text style={styles.listTitle}>CAPS</Text>
-        <TouchableOpacity style={styles.addButton} activeOpacity={0.75} onPress={openCreateModal}>
+        <Text style={[styles.listTitle, { color: colors.text }]}>CAPS</Text>
+        <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.primary }]} activeOpacity={0.75} onPress={openCreateModal}>
           <Ionicons name="add" size={18} color="#FFFFFF" />
           <Text style={styles.addButtonText}>NEW CAP</Text>
         </TouchableOpacity>
       </View>
 
       {budgets.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Ionicons name="wallet-outline" size={32} color={colors.textMuted} />
-          <Text style={styles.emptyText}>No budgets yet</Text>
+        <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Ionicons name="wallet-outline" size={32} color={colors.textTertiary} />
+          <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No budgets yet</Text>
         </View>
       ) : (
         budgets.map((budget, index) => {
           const itemRatio = budget.amountLimit > 0 ? budget.totalSpent / budget.amountLimit : 0;
-          const tone = getTone(itemRatio);
+          const tone = getTone(itemRatio, colors);
           return (
-            <TouchableOpacity key={budget.budgetId} style={styles.budgetRow} onPress={() => openEditModal(budget)}>
+            <TouchableOpacity key={budget.budgetId} style={[styles.budgetRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={() => openEditModal(budget)}>
               <View style={styles.rowTop}>
                 <View style={styles.rowLeft}>
-                  <View style={[styles.numberPlate, { backgroundColor: index % 2 ? colors.textPrimary : colors.figma.appBg }]}>
+                  <View style={[styles.numberPlate, { backgroundColor: index % 2 ? colors.primary : colors.surface2 }]}>
                     <Text style={styles.numberPlateText}>{String(index + 1).padStart(2, "0")}</Text>
                   </View>
-                  <View style={styles.iconBox}>
-                    <Ionicons name="pricetag" size={18} color={colors.textPrimary} />
+                  <View style={[styles.iconBox, { borderColor: colors.cardBorder, backgroundColor: colors.surface2 }]}>
+                    <Ionicons name="pricetag" size={18} color={colors.text} />
                   </View>
                   <View style={styles.budgetTextWrap}>
-                    <Text style={styles.budgetName}>{budget.categoryName}</Text>
-                    <Text style={styles.budgetPeriod}>{monthNames[budget.month - 1]} {budget.year}</Text>
+                    <Text style={[styles.budgetName, { color: colors.text }]}>{budget.categoryName}</Text>
+                    <Text style={[styles.budgetPeriod, { color: colors.textTertiary }]}>{monthNames[budget.month - 1]} {budget.year}</Text>
                   </View>
                 </View>
                 <Text style={[styles.percent, { color: tone }]}>{Math.round(itemRatio * 100)}%</Text>
               </View>
               <View style={styles.amountRow}>
                 <MoneyText amount={budget.totalSpent} size="sm" color="loss" />
-                <Text style={styles.slash}>/</Text>
+                <Text style={[styles.slash, { color: colors.textTertiary }]}>/</Text>
                 <MoneyText amount={budget.amountLimit} size="sm" color="muted" />
               </View>
-              <View style={styles.bar}>
+              <View style={[styles.bar, { backgroundColor: colors.surface2 }]}>
                 <View style={[styles.fill, { width: `${Math.min(itemRatio * 100, 100)}%`, backgroundColor: tone }]} />
               </View>
             </TouchableOpacity>
@@ -334,52 +336,52 @@ export const BudgetsScreen: React.FC<BudgetsScreenProps> = () => {
 
 const styles = StyleSheet.create({
   wrapper: { paddingHorizontal: spacing.xl, marginTop: spacing.lg, paddingBottom: 120 },
-  headerCard: { backgroundColor: colors.surfaceCard, borderWidth: 1, borderColor: colors.figma.appBg, padding: spacing.lg, borderRadius: 20, shadowColor: "#2563EB", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4 },
-  eyebrow: { ...typography.caption, color: colors.textSecondary, fontWeight: "600", letterSpacing: 0.5, textTransform: "none" },
+  headerCard: { borderWidth: 1, padding: spacing.lg, borderRadius: 20 },
+  eyebrow: { ...typography.caption, fontWeight: "600", letterSpacing: 0.5, textTransform: "none" },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.base },
   summaryRight: { alignItems: "flex-end" },
-  summaryLabel: { ...typography.body, color: colors.textSecondary, fontWeight: "500", letterSpacing: 0 },
-  masterBar: { height: 10, backgroundColor: colors.border, marginTop: spacing.base, borderRadius: 5 },
+  summaryLabel: { ...typography.body.regular, fontWeight: "500" },
+  masterBar: { height: 10, marginTop: spacing.base, borderRadius: 5 },
   masterFill: { height: "100%", borderRadius: 5 },
-  ratioText: { ...typography.body, marginTop: spacing.sm, fontWeight: "600", letterSpacing: 0, color: colors.textPrimary },
+  ratioText: { ...typography.body.regular, marginTop: spacing.sm, fontWeight: "600" },
   listHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: spacing.xl, marginBottom: spacing.md },
-  listTitle: { ...typography.body, color: colors.textPrimary, fontWeight: "700", letterSpacing: 0, textTransform: "none" },
-  addButton: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.figma.appBg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 12 },
-  addButtonText: { ...typography.body, color: "#FFFFFF", fontWeight: "600", fontSize: 13, letterSpacing: 0 },
-  budgetRow: { backgroundColor: colors.surfaceCard, borderWidth: 1, borderColor: colors.border, padding: spacing.base, marginBottom: spacing.md, borderRadius: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
+  listTitle: { ...typography.body.large, fontWeight: "700" },
+  addButton: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 12 },
+  addButtonText: { ...typography.body.regular, color: "#FFFFFF", fontWeight: "600", fontSize: 13 },
+  budgetRow: { borderWidth: 1, padding: spacing.base, marginBottom: spacing.md, borderRadius: 16 },
   rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   rowLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },
   numberPlate: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 10 },
   numberPlateText: { color: "#FFFFFF", fontWeight: "600", fontSize: 13 },
-  iconBox: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", backgroundColor: colors.figma.surface },
+  iconBox: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   budgetTextWrap: { flex: 1 },
-  budgetName: { ...typography.body, color: colors.textPrimary, fontWeight: "600", letterSpacing: 0 },
-  budgetPeriod: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  percent: { fontWeight: "700", fontSize: 17, color: colors.textPrimary },
+  budgetName: { ...typography.body.large, fontWeight: "600" },
+  budgetPeriod: { ...typography.caption, marginTop: 2 },
+  percent: { fontWeight: "700", fontSize: 17 },
   amountRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginTop: spacing.sm },
-  slash: { color: colors.textMuted, fontWeight: "500" },
-  bar: { height: 8, backgroundColor: colors.border, marginTop: spacing.sm, borderRadius: 4 },
+  slash: { fontWeight: "500" },
+  bar: { height: 8, marginTop: spacing.sm, borderRadius: 4 },
   fill: { height: "100%", borderRadius: 4 },
-  emptyCard: { backgroundColor: colors.surfaceCard, borderWidth: 1, borderColor: colors.border, padding: spacing.xl, borderRadius: 16, alignItems: "center" },
-  emptyText: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm },
-  errorText: { ...typography.body, color: colors.loss, marginBottom: spacing.md },
+  emptyCard: { borderWidth: 1, padding: spacing.xl, borderRadius: 16, alignItems: "center" },
+  emptyText: { ...typography.body.regular, marginTop: spacing.sm },
+  errorText: { ...typography.body.regular, color: "#FB7185", marginBottom: spacing.md },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center" },
-  modalContent: { width: "90%", maxWidth: 420, backgroundColor: colors.surfaceCard, borderRadius: 20, padding: spacing.xl },
-  modalTitle: { ...typography.title, color: colors.textPrimary, textAlign: "center", marginBottom: spacing.md },
-  modalError: { ...typography.caption, color: colors.loss, textAlign: "center", marginBottom: spacing.md },
-  modalLabel: { ...typography.body, color: colors.textSecondary, fontWeight: "600", marginTop: spacing.md, marginBottom: spacing.sm },
-  modalInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: spacing.base, color: colors.textPrimary, backgroundColor: colors.figma.surface },
+  modalContent: { width: "90%", maxWidth: 420, borderRadius: 20, padding: spacing.xl },
+  modalTitle: { ...typography.title, textAlign: "center", marginBottom: spacing.md },
+  modalError: { ...typography.caption, color: "#FB7185", textAlign: "center", marginBottom: spacing.md },
+  modalLabel: { ...typography.body.regular, fontWeight: "600", marginTop: spacing.md, marginBottom: spacing.sm },
+  modalInput: { borderWidth: 1, borderRadius: 12, padding: spacing.base },
   categoryScroll: { maxHeight: 54 },
-  categoryChip: { flexDirection: "row", alignItems: "center", gap: spacing.xs, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginRight: spacing.sm, backgroundColor: colors.figma.surface },
-  categoryChipActive: { backgroundColor: colors.figma.appBg, borderColor: colors.figma.appBg },
+  categoryChip: { flexDirection: "row", alignItems: "center", gap: spacing.xs, borderWidth: 1, borderRadius: 12, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginRight: spacing.sm },
+  categoryChipActive: {},
   categoryChipDisabled: { opacity: 0.35 },
-  categoryChipText: { ...typography.caption, color: colors.textSecondary, fontWeight: "600" },
-  categoryChipTextActive: { color: "#FFFFFF" },
-  currentPeriodText: { ...typography.caption, color: colors.textMuted, marginTop: spacing.sm },
+  categoryChipText: { ...typography.caption, fontWeight: "600" },
+  categoryChipTextActive: {},
+  currentPeriodText: { ...typography.caption, marginTop: spacing.sm },
   modalActions: { flexDirection: "row", gap: spacing.md, marginTop: spacing.xl },
-  modalCancelBtn: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: spacing.base, alignItems: "center" },
-  modalCancelText: { ...typography.button, color: colors.textSecondary },
-  modalSaveBtn: { flex: 1, backgroundColor: colors.figma.appBg, borderRadius: 12, paddingVertical: spacing.base, alignItems: "center", minHeight: 48, justifyContent: "center" },
+  modalCancelBtn: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: spacing.base, alignItems: "center" },
+  modalCancelText: { ...typography.button },
+  modalSaveBtn: { flex: 1, borderRadius: 12, paddingVertical: spacing.base, alignItems: "center", minHeight: 48, justifyContent: "center" },
   modalSaveText: { ...typography.button, color: "#FFFFFF" },
   disabledBtn: { opacity: 0.6 },
 });

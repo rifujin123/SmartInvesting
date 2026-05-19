@@ -10,11 +10,13 @@ import { RegisterScreen } from "../../features/register/screens/RegisterScreen";
 import { ForgotPasswordScreen } from "../../features/forgot-password/screens/ForgotPasswordScreen";
 import { DashboardScreen } from "../../features/dashboard/screens/DashboardScreen";
 import { BuyAssetsScreen } from "../../features/investing/screens/BuyAssetsScreen";
+import { AssetDetailScreen } from "../../features/investing/screens/AssetDetailScreen";
 import { FinanceScreen } from "../../features/finance/screens/FinanceScreen";
 import { GoalDetailScreen } from "../../features/finance/screens/GoalDetailScreen";
 import { BudgetDetailScreen } from "../../features/finance/screens/BudgetDetailScreen";
 import { PortfolioScreen } from "../../features/portfolio/screens/PortfolioScreen";
 import { TransactionsScreen } from "../../features/transactions/screens/TransactionsScreen";
+import { DiscoveryScreen } from "../../features/discovery/screens/DiscoveryScreen";
 import { ProfileScreen } from "../../features/profile/screens/ProfileScreen";
 import { PersonalInformationScreen } from "../../features/profile/screens/PersonalInformationScreen";
 import { SecurityScreen } from "../../features/profile/screens/SecurityScreen";
@@ -191,6 +193,7 @@ const MainTabsNavigator: React.FC<{ onBuyAsset: (type: AssetType) => void }> = (
       <Tab.Screen name="Dashboard">
         {() => <DashboardScreen onBuyAsset={onBuyAsset} />}
       </Tab.Screen>
+      <Tab.Screen name="Discovery" component={DiscoveryScreen} />
       <Tab.Screen name="Finance" component={FinanceScreen} />
       <Tab.Screen name="Portfolio" component={PortfolioScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
@@ -209,6 +212,7 @@ const AppNavigator: React.FC = () => {
         )}
       </AppStack.Screen>
       <AppStack.Screen name="BuyAssets" component={BuyAssetsScreen} />
+      <AppStack.Screen name="AssetDetail" component={AssetDetailScreen} />
       <AppStack.Screen name="GoalDetail" component={GoalDetailScreen} />
       <AppStack.Screen name="BudgetDetail" component={BudgetDetailScreen} />
       <AppStack.Screen name="Profile" component={ProfileScreen} />
@@ -230,7 +234,8 @@ export const RootNavigator: React.FC<RootNavigatorProps> = ({
     return <View style={styles.container} />;
   }
 
-  if (!hasShownSplash) {
+  // Show splash only on first app launch (onboarding flow)
+  if (!hasShownSplash && initialOnboarding) {
     return (
       <View style={styles.container}>
         <SplashScreen onFinish={() => setHasShownSplash(true)} />

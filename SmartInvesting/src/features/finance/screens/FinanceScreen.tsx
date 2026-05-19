@@ -1,36 +1,34 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
+  View,
   RefreshControl,
   ActivityIndicator,
   TextInput,
   Modal,
   Alert,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { AppTabParamList } from "../../../shared/navigation/types";
-import { AppHeader } from "../../../shared/components";
-import { colors } from "../../../theme/colors";
-import { spacing } from "../../../theme/spacing";
-import { typography } from "../../../theme/typography";
-import { MoneyText } from "../../../components/finance/MoneyText";
-import { SegmentedControl } from "../../../components/finance/SegmentedControl";
-import { TransactionRow } from "../../../components/finance/TransactionRow";
-import { SkeletonCard } from "../../../components/finance/SkeletonCard";
-import { BudgetsScreen } from "./BudgetsScreen";
+import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "../../../theme/ThemeContext";
+import { spacing, typography } from "../../../theme/tokens";
 import { tokenStorage } from "../../../services/auth/tokenStorage";
 import { walletsService } from "../../../services/wallets/walletsService";
-import { transactionsService } from "../../../services/transactions/transactionsService";
 import { financeService } from "../../../services/finance/financeService";
+import { transactionsService } from "../../../services/transactions/transactionsService";
+import { formatVnd } from "../../../utils/formatCurrency";
 import type { WalletDto } from "../../../services/wallets/types";
-import type { TransactionDto } from "../../../services/transactions/types";
 import type { BudgetDto, BudgetSummaryDto, GoalDto } from "../../../services/finance/types";
+import type { TransactionDto } from "../../../services/transactions/types";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { AppTabParamList } from "../../../shared/navigation/types";
+import { AppHeader } from "../../../shared/components";
+import { SegmentedControl, TransactionRow, WalletPill } from "../../../components/finance";
+import { GlassCard } from "../../../components/finance";
+import { ShimmerBar } from "../../../components/finance";
 
 type FinanceTab = "overview" | "transactions" | "budgets";
 type FinanceNavigation = BottomTabNavigationProp<AppTabParamList, "Finance">;
@@ -40,39 +38,11 @@ const monthNames = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-// Design tokens from DESIGN_FLOWCHART.md
-const designTokens = {
-  background: "#FFFFFF",
-  surface: "#F8FAFC",
-  surfaceCard: "#FFFFFF",
-  border: "#E2E8F0",
-  borderLight: "#F1F5F9",
-  textPrimary: "#0F172A",
-  textSecondary: "#64748B",
-  textMuted: "#94A3B8",
-  primary: "#3B82F6",
-  primaryHover: "#2563EB",
-  primaryPressed: "#1D4ED8",
-  primaryLight: "#EFF6FF",
-  success: "#22C55E",
-  successLight: "#F0FDF4",
-  loss: "#EF4444",
-  lossLight: "#FEF2F2",
-  warning: "#F59E0B",
-  warningLight: "#FFFBEB",
-  heroBg: "#0F172A",
-  heroText: "#FFFFFF",
-  heroMuted: "#94A3B8",
-};
-
 export const FinanceScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<FinanceTab>("overview");
-  const overviewScrollRef = useRef<ScrollView | null>(null);
-  const transactionsScrollRef = useRef<ScrollView | null>(null);
-  const budgetsScrollRef = useRef<ScrollView | null>(null);
+  const { colors } = useTheme();
   const navigation = useNavigation<FinanceNavigation>();
 
-  // Auth & Wallet state
+  const [activeTab, setActiveTab] = useState<FinanceTab>("overview");
   const [token, setToken] = useState<string | null>(null);
   const [wallets, setWallets] = useState<WalletDto[]>([]);
   const [activeWallet, setActiveWallet] = useState<WalletDto | null>(null);
@@ -81,18 +51,15 @@ export const FinanceScreen: React.FC = () => {
     return { month: now.getMonth() + 1, year: now.getFullYear() };
   });
 
-  // Data state
   const [budgets, setBudgets] = useState<BudgetDto[]>([]);
   const [budgetSummaries, setBudgetSummaries] = useState<BudgetSummaryDto[]>([]);
   const [goals, setGoals] = useState<GoalDto[]>([]);
   const [recentTx, setRecentTx] = useState<TransactionDto[]>([]);
 
-  // Loading & Error states
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Create wallet modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [walletName, setWalletName] = useState("");
   const [walletBalance, setWalletBalance] = useState("0");
@@ -100,29 +67,25 @@ export const FinanceScreen: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  // Create goal modal state
   const [showCreateGoalModal, setShowCreateGoalModal] = useState(false);
   const [goalName, setGoalName] = useState("");
   const [goalTargetAmount, setGoalTargetAmount] = useState("");
   const [goalIcon, setGoalIcon] = useState("flag");
-  const [goalColor, setGoalColor] = useState(designTokens.primary);
+  const [goalColor, setGoalColor] = useState<string>(colors.primary);
   const [goalSubmitting, setGoalSubmitting] = useState(false);
   const [goalModalError, setGoalModalError] = useState<string | null>(null);
 
-  // Load auth token
   const loadToken = useCallback(async () => {
     const { accessToken } = await tokenStorage.getTokens();
     if (accessToken) setToken(accessToken);
   }, []);
 
-  // Load all data in parallel (per flowchart)
   const loadData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
 
     try {
-      // Parallel requests per DESIGN_FLOWCHART.md flowchart
       const [walletsRes, budgetsRes] = await Promise.all([
         walletsService.getMyWallets(token),
         financeService.getBudgets(token),
@@ -130,18 +93,15 @@ export const FinanceScreen: React.FC = () => {
 
       setWallets(walletsRes.items);
 
-      // Select active wallet (first one)
       if (walletsRes.items.length > 0) {
         setActiveWallet(walletsRes.items[0]);
       }
 
-      // Filter budgets by current month/year
       const filteredBudgets = budgetsRes.filter(
         (b) => b.month === currentMonth.month && b.year === currentMonth.year,
       );
       setBudgets(filteredBudgets);
 
-      // Get budget summaries in parallel
       const summaries = await Promise.all(
         filteredBudgets.map(async (budget) => {
           try {
@@ -158,17 +118,15 @@ export const FinanceScreen: React.FC = () => {
       );
       setBudgetSummaries(summaries);
 
-      // Load goals (filter not completed)
       const goalsData = await financeService.getGoals(token);
       setGoals(goalsData.filter((g) => !g.isCompleted));
 
-      // Load recent transactions (top 5)
       if (walletsRes.items.length > 0) {
         const txRes = await transactionsService.getTransactionsByWallet(
           token,
           walletsRes.items[0].id,
-          1, // page
-          5  // pageSize
+          1,
+          5
         );
         setRecentTx(txRes.items);
       }
@@ -186,29 +144,26 @@ export const FinanceScreen: React.FC = () => {
     setRefreshing(false);
   }, [loadData]);
 
-  // Initial load
-  useEffect(() => {
+  useMemo(() => {
     loadToken();
   }, [loadToken]);
 
-  useEffect(() => {
+  useMemo(() => {
     if (token) {
       loadData();
     }
   }, [token, loadData]);
 
-  // Computed values
   const totalBudget = budgets.reduce((sum, b) => sum + b.amountLimit, 0);
   const totalSpent = budgetSummaries.reduce((sum, b) => sum + b.totalSpent, 0);
   const remaining = budgetSummaries.reduce((sum, b) => sum + b.remaining, 0);
   const monthLabel = `${monthNames[currentMonth.month - 1]} ${currentMonth.year}`;
   const progressPercent = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
-  // Progress bar color per token spec
   const getProgressColor = (percent: number) => {
-    if (percent >= 90) return designTokens.loss;
-    if (percent >= 70) return designTokens.warning;
-    return designTokens.success;
+    if (percent >= 90) return colors.loss;
+    if (percent >= 70) return colors.warning;
+    return colors.gain;
   };
 
   const changeMonth = (delta: number) => {
@@ -219,37 +174,17 @@ export const FinanceScreen: React.FC = () => {
     setCurrentMonth({ month: m, year: y });
   };
 
-  const scrollTabToTop = (tab: FinanceTab) => {
-    const ref =
-      tab === "overview"
-        ? overviewScrollRef
-        : tab === "transactions"
-          ? transactionsScrollRef
-          : budgetsScrollRef;
-
-    ref.current?.scrollTo({ y: 0, animated: false });
-  };
-
-  const handleTabChange = (tab: FinanceTab) => {
-    setActiveTab(tab);
-    requestAnimationFrame(() => scrollTabToTop(tab));
-  };
-
   const handleAddGoal = () => {
     setGoalName("");
     setGoalTargetAmount("");
     setGoalIcon("flag");
-    setGoalColor(designTokens.primary);
+    setGoalColor(colors.primary);
     setGoalModalError(null);
     setShowCreateGoalModal(true);
   };
 
   const handleViewAllTx = () => {
     navigation.navigate("Transactions");
-  };
-
-  const handleGoalPress = (_goalId: number) => {
-    // TODO: navigate to GoalDetail when available
   };
 
   const resetCreateWalletForm = () => {
@@ -305,7 +240,6 @@ export const FinanceScreen: React.FC = () => {
         isPaper: false,
       });
 
-      // Refresh screen data + select new wallet
       await loadData();
       setActiveWallet(created);
 
@@ -318,93 +252,6 @@ export const FinanceScreen: React.FC = () => {
       setIsSubmitting(false);
     }
   };
-
-  const renderCreateWalletModal = () => (
-    <Modal
-      visible={showCreateModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={closeCreateWalletModal}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Create Wallet</Text>
-
-          {modalError ? (
-            <Text style={styles.modalError}>{modalError}</Text>
-          ) : null}
-
-          <Text style={styles.modalLabel}>Wallet Name *</Text>
-          <TextInput
-            style={styles.modalInput}
-            value={walletName}
-            onChangeText={setWalletName}
-            placeholder="e.g. Cash, Bank, Momo"
-            maxLength={50}
-            editable={!isSubmitting}
-          />
-
-          <Text style={styles.modalLabel}>Initial Balance</Text>
-          <TextInput
-            style={styles.modalInput}
-            value={walletBalance}
-            onChangeText={setWalletBalance}
-            placeholder="0"
-            keyboardType="decimal-pad"
-            editable={!isSubmitting}
-          />
-
-          <Text style={styles.modalLabel}>Currency</Text>
-          <View style={styles.currencyRow}>
-            {["VND", "USD"].map((cur) => (
-              <TouchableOpacity
-                key={cur}
-                style={[
-                  styles.currencyChip,
-                  walletCurrency === cur && styles.currencyChipActive,
-                ]}
-                onPress={() => setWalletCurrency(cur)}
-                disabled={isSubmitting}
-              >
-                <Text
-                  style={[
-                    styles.currencyChipText,
-                    walletCurrency === cur && styles.currencyChipTextActive,
-                  ]}
-                >
-                  {cur}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={styles.modalCancelBtn}
-              onPress={closeCreateWalletModal}
-              disabled={isSubmitting}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.modalCreateBtn,
-                isSubmitting && styles.modalCreateBtnDisabled,
-              ]}
-              onPress={submitCreateWallet}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={designTokens.heroText} />
-              ) : (
-                <Text style={styles.modalCreateText}>Create</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
 
   const closeCreateGoalModal = () => {
     setShowCreateGoalModal(false);
@@ -449,200 +296,40 @@ export const FinanceScreen: React.FC = () => {
     }
   };
 
-  const renderCreateGoalModal = () => (
-    <Modal
-      visible={showCreateGoalModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={closeCreateGoalModal}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Create Goal</Text>
-
-          {goalModalError ? (
-            <Text style={styles.modalError}>{goalModalError}</Text>
-          ) : null}
-
-          <Text style={styles.modalLabel}>Goal Name *</Text>
-          <TextInput
-            style={styles.modalInput}
-            value={goalName}
-            onChangeText={setGoalName}
-            placeholder="e.g. Emergency Fund"
-            maxLength={50}
-            editable={!goalSubmitting}
-          />
-
-          <Text style={styles.modalLabel}>Target Amount</Text>
-          <TextInput
-            style={styles.modalInput}
-            value={goalTargetAmount}
-            onChangeText={setGoalTargetAmount}
-            placeholder="10000000"
-            keyboardType="decimal-pad"
-            editable={!goalSubmitting}
-          />
-
-          <Text style={styles.modalLabel}>Icon</Text>
-          <View style={styles.currencyRow}>
-            {["flag", "wallet", "card", "cash"].map((icon) => (
-              <TouchableOpacity
-                key={icon}
-                style={[
-                  styles.currencyChip,
-                  goalIcon === icon && styles.currencyChipActive,
-                ]}
-                onPress={() => setGoalIcon(icon)}
-                disabled={goalSubmitting}
-              >
-                <Ionicons
-                  name={icon as keyof typeof Ionicons.glyphMap}
-                  size={16}
-                  color={goalIcon === icon ? designTokens.heroText : designTokens.textSecondary}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.modalLabel}>Color</Text>
-          <View style={styles.colorRow}>
-            {[designTokens.primary, designTokens.success, designTokens.warning, designTokens.loss].map((color) => (
-              <TouchableOpacity
-                key={color}
-                style={[
-                  styles.colorChip,
-                  { backgroundColor: color },
-                  goalColor === color && styles.colorChipActive,
-                ]}
-                onPress={() => setGoalColor(color)}
-                disabled={goalSubmitting}
-              />
-            ))}
-          </View>
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={styles.modalCancelBtn}
-              onPress={closeCreateGoalModal}
-              disabled={goalSubmitting}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.modalCreateBtn,
-                goalSubmitting && styles.modalCreateBtnDisabled,
-              ]}
-              onPress={submitCreateGoal}
-              disabled={goalSubmitting}
-            >
-              {goalSubmitting ? (
-                <ActivityIndicator size="small" color={designTokens.heroText} />
-              ) : (
-                <Text style={styles.modalCreateText}>Create</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
-  // Budgets tab
-  if (activeTab === "budgets") {
-    return (
-      <View style={styles.container}>
-        <ScrollView
-          ref={budgetsScrollRef}
-          showsVerticalScrollIndicator={false}
-        >
-          <AppHeader />
-          <View style={styles.segmentWrap}>
-            <SegmentedControl
-              options={[
-                { label: "Overview", value: "overview" },
-                { label: "Transactions", value: "transactions" },
-                { label: "Budgets", value: "budgets" },
-              ]}
-              selectedValue={activeTab}
-              onChange={(value) => handleTabChange(value as FinanceTab)}
-            />
-          </View>
-          <BudgetsScreen embedded />
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // Transactions tab
-  if (activeTab === "transactions") {
-    return (
-      <View style={styles.container}>
-        <ScrollView
-          ref={transactionsScrollRef}
-          showsVerticalScrollIndicator={false}
-        >
-          <AppHeader />
-          <View style={styles.segmentWrap}>
-            <SegmentedControl
-              options={[
-                { label: "Overview", value: "overview" },
-                { label: "Transactions", value: "transactions" },
-                { label: "Budgets", value: "budgets" },
-              ]}
-              selectedValue={activeTab}
-              onChange={(value) => handleTabChange(value as FinanceTab)}
-            />
-          </View>
-          {/* Recent tx list - navigate to Transactions screen */}
-          <TouchableOpacity onPress={handleViewAllTx} style={styles.viewAllCard}>
-            <Text style={styles.viewAllText}>View all transactions →</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // Loading state - skeleton per DESIGN_FLOWCHART.md
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <AppHeader />
-        <View style={styles.heroSkeleton}>
-          <SkeletonCard height={200} />
-        </View>
-        <View style={styles.contentPad}>
-          <SkeletonCard height={100} />
+        <View style={styles.screenPad}>
+          <ShimmerBar width="100%" height={200} borderRadius={20} />
+          <ShimmerBar width="100%" height={100} borderRadius={16} style={{ marginTop: spacing.lg }} />
         </View>
       </View>
     );
   }
 
-  // No token - empty state
   if (!token) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <AppHeader />
         <View style={styles.emptyState}>
-          <Ionicons name="wallet-outline" size={64} color={designTokens.textMuted} />
-          <Text style={styles.emptyTitle}>Please login</Text>
-          <Text style={styles.emptySubtitle}>Sign in to view your finances</Text>
+          <Ionicons name="wallet-outline" size={64} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Please login</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Sign in to view your finances</Text>
         </View>
       </View>
     );
   }
 
-  // No wallet - onboarding
   if (wallets.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <AppHeader />
         <View style={styles.emptyState}>
-          <Ionicons name="add-circle-outline" size={64} color={designTokens.textMuted} />
-          <Text style={styles.emptyTitle}>Create your first wallet</Text>
-          <TouchableOpacity style={styles.createWalletBtn} onPress={openCreateWalletModal}>
-            <Text style={styles.createWalletText}>NEW WALLET</Text>
+          <Ionicons name="add-circle-outline" size={64} color={colors.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Create your first wallet</Text>
+          <TouchableOpacity style={[styles.createWalletBtn, { backgroundColor: colors.primary }]} onPress={openCreateWalletModal}>
+            <Text style={[styles.createWalletText, { color: colors.text }]}>NEW WALLET</Text>
           </TouchableOpacity>
         </View>
         {renderCreateWalletModal()}
@@ -651,9 +338,8 @@ export const FinanceScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
-        ref={overviewScrollRef}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} />
@@ -661,45 +347,32 @@ export const FinanceScreen: React.FC = () => {
       >
         <AppHeader />
 
-        {/* HERO CARD - Dark hero per token spec */}
-        <TouchableOpacity style={styles.hero} activeOpacity={0.9}>
+        <TouchableOpacity style={[styles.hero, { backgroundColor: "#0F172A" }]} activeOpacity={0.9}>
           <View style={styles.heroTopline}>
-            <TouchableOpacity
-              style={styles.monthPicker}
-              onPress={() => changeMonth(-1)}
-            >
-              <Ionicons name="chevron-back" size={20} color={designTokens.heroText} />
+            <TouchableOpacity style={styles.monthPicker} onPress={() => changeMonth(-1)}>
+              <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.monthLabel}>{monthLabel}</Text>
-            <TouchableOpacity
-              style={styles.monthPicker}
-              onPress={() => changeMonth(1)}
-            >
-              <Ionicons name="chevron-forward" size={20} color={designTokens.heroText} />
+            <TouchableOpacity style={styles.monthPicker} onPress={() => changeMonth(1)}>
+              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
           <Text style={styles.heroTitle}>REMAINING</Text>
-          <MoneyText
-            amount={remaining}
-            size="lg"
-            style={styles.heroBalance}
-            color={designTokens.heroText}
-          />
+          <Text style={[styles.heroBalance, { color: colors.text }]}>{formatVnd(remaining)}</Text>
 
           <View style={styles.budgetRow}>
             <View style={styles.budgetItem}>
               <Text style={styles.budgetLabel}>SPENT</Text>
-              <MoneyText amount={totalSpent} size="md" color={designTokens.heroMuted} />
+              <Text style={[styles.budgetValue, { color: colors.textSecondary }]}>{formatVnd(totalSpent)}</Text>
             </View>
             <View style={styles.budgetDivider} />
             <View style={styles.budgetItem}>
               <Text style={styles.budgetLabel}>BUDGET</Text>
-              <MoneyText amount={totalBudget} size="md" color={designTokens.heroText} />
+              <Text style={[styles.budgetValue, { color: colors.text }]}>{formatVnd(totalBudget)}</Text>
             </View>
           </View>
 
-          {/* Progress bar per token spec */}
           <View style={styles.progressBar}>
             <View
               style={[
@@ -713,7 +386,6 @@ export const FinanceScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
 
-        {/* SEGMENTED TABS */}
         <View style={styles.segmentWrap}>
           <SegmentedControl
             options={[
@@ -726,89 +398,90 @@ export const FinanceScreen: React.FC = () => {
           />
         </View>
 
-        {/* KPI GRID */}
         <View style={styles.kpiGrid}>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>BUDGETS</Text>
-            <Text style={styles.kpiValue}>{budgets.length}</Text>
-            <Text style={styles.kpiCaption}>active this month</Text>
-          </View>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>GOALS</Text>
-            <Text style={styles.kpiValue}>{goals.length}</Text>
-            <Text style={styles.kpiCaption}>in progress</Text>
-          </View>
+          <GlassCard>
+            <View style={styles.kpiCard}>
+              <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>BUDGETS</Text>
+              <Text style={[styles.kpiValue, { color: colors.text }]}>{budgets.length}</Text>
+              <Text style={[styles.kpiCaption, { color: colors.textSecondary }]}>active this month</Text>
+            </View>
+          </GlassCard>
+          <GlassCard>
+            <View style={styles.kpiCard}>
+              <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>GOALS</Text>
+              <Text style={[styles.kpiValue, { color: colors.text }]}>{goals.length}</Text>
+              <Text style={[styles.kpiCaption, { color: colors.textSecondary }]}>in progress</Text>
+            </View>
+          </GlassCard>
         </View>
 
-        {/* GOALS SECTION */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>GOALS</Text>
-            <TouchableOpacity style={styles.addBtn} onPress={handleAddGoal}>
-              <Ionicons name="add" size={16} color={designTokens.heroText} />
-              <Text style={styles.addBtnText}>NEW</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>GOALS</Text>
+            <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.primary }]} onPress={handleAddGoal}>
+              <Ionicons name="add" size={16} color={colors.text} />
+              <Text style={[styles.addBtnText, { color: colors.text }]}>NEW</Text>
             </TouchableOpacity>
           </View>
 
           {goals.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Ionicons name="flag-outline" size={32} color={designTokens.textMuted} />
-              <Text style={styles.emptyCardText}>No goals yet</Text>
-              <Text style={styles.emptyCardSubtext}>Start a savings goal</Text>
-            </View>
+            <GlassCard style={styles.emptyCard}>
+              <Ionicons name="flag-outline" size={32} color={colors.textSecondary} />
+              <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>No goals yet</Text>
+              <Text style={[styles.emptyCardSubtext, { color: colors.textSecondary }]}>Start a savings goal</Text>
+            </GlassCard>
           ) : (
-            <View style={styles.listCard}>
+            <GlassCard>
               {goals.slice(0, 3).map((goal) => (
                 <TouchableOpacity
                   key={goal.id}
-                  style={styles.goalRow}
-                  onPress={() => handleGoalPress(goal.id)}
+                  style={[styles.goalRow, { borderBottomColor: colors.cardBorder }]}
+                  onPress={() => {}}
                 >
                   <View style={styles.goalLeft}>
                     <View
                       style={[
                         styles.goalIcon,
-                        { backgroundColor: goal.color || designTokens.primary }
+                        { backgroundColor: goal.color || colors.primary }
                       ]}
                     >
                       <Ionicons
                         name={(goal.icon as keyof typeof Ionicons.glyphMap) || "flag"}
                         size={16}
-                        color={designTokens.heroText}
+                        color={colors.text}
                       />
                     </View>
                     <View>
-                      <Text style={styles.goalName}>{goal.name}</Text>
-                      <Text style={styles.goalAmount}>
-                        {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
+                      <Text style={[styles.goalName, { color: colors.text }]}>{goal.name}</Text>
+                      <Text style={[styles.goalAmount, { color: colors.textSecondary }]}>
+                        {formatVnd(goal.currentAmount)} / {formatVnd(goal.targetAmount)}
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.goalPercent}>
+                  <Text style={[styles.goalPercent, { color: colors.text }]}>
                     {Math.round(goal.progressPercent)}%
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </GlassCard>
           )}
         </View>
 
-        {/* RECENT TRANSACTIONS SECTION */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>RECENT TRANSACTIONS</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>RECENT TRANSACTIONS</Text>
             <TouchableOpacity onPress={handleViewAllTx}>
-              <Text style={styles.sectionAction}>VIEW ALL</Text>
+              <Text style={[styles.sectionAction, { color: colors.primary }]}>VIEW ALL</Text>
             </TouchableOpacity>
           </View>
 
           {recentTx.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Ionicons name="receipt-outline" size={32} color={designTokens.textMuted} />
-              <Text style={styles.emptyCardText}>No transactions yet</Text>
-            </View>
+            <GlassCard style={styles.emptyCard}>
+              <Ionicons name="receipt-outline" size={32} color={colors.textSecondary} />
+              <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>No transactions yet</Text>
+            </GlassCard>
           ) : (
-            <View style={styles.listCard}>
+            <GlassCard>
               {recentTx.map((tx) => (
                 <TransactionRow
                   key={tx.id}
@@ -824,7 +497,7 @@ export const FinanceScreen: React.FC = () => {
                   onPress={() => {}}
                 />
               ))}
-            </View>
+            </GlassCard>
           )}
         </View>
       </ScrollView>
@@ -832,34 +505,218 @@ export const FinanceScreen: React.FC = () => {
       {renderCreateGoalModal()}
     </View>
   );
-};
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(amount);
+  function renderCreateWalletModal() {
+    return (
+      <Modal
+        visible={showCreateModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeCreateWalletModal}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Create Wallet</Text>
+
+            {modalError ? (
+              <Text style={[styles.modalError, { color: colors.loss }]}>{modalError}</Text>
+            ) : null}
+
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Wallet Name *</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.cardBorder, color: colors.text }]}
+              value={walletName}
+              onChangeText={setWalletName}
+              placeholder="e.g. Cash, Bank, Momo"
+              maxLength={50}
+              editable={!isSubmitting}
+            />
+
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Initial Balance</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.cardBorder, color: colors.text }]}
+              value={walletBalance}
+              onChangeText={setWalletBalance}
+              placeholder="0"
+              keyboardType="decimal-pad"
+              editable={!isSubmitting}
+            />
+
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Currency</Text>
+            <View style={styles.currencyRow}>
+              {["VND", "USD"].map((cur) => (
+                <TouchableOpacity
+                  key={cur}
+                  style={[
+                    styles.currencyChip,
+                    walletCurrency === cur && [styles.currencyChipActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
+                    { borderColor: colors.cardBorder },
+                  ]}
+                  onPress={() => setWalletCurrency(cur)}
+                  disabled={isSubmitting}
+                >
+                  <Text
+                    style={[
+                      styles.currencyChipText,
+                      { color: walletCurrency === cur ? colors.text : colors.textSecondary },
+                    ]}
+                  >
+                    {cur}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { borderColor: colors.cardBorder }]}
+                onPress={closeCreateWalletModal}
+                disabled={isSubmitting}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalCreateBtn,
+                  isSubmitting && styles.modalCreateBtnDisabled,
+                  { backgroundColor: colors.primary },
+                ]}
+                onPress={submitCreateWallet}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <Text style={[styles.modalCreateText, { color: colors.text }]}>Create</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  function renderCreateGoalModal() {
+    return (
+      <Modal
+        visible={showCreateGoalModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeCreateGoalModal}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Create Goal</Text>
+
+            {goalModalError ? (
+              <Text style={[styles.modalError, { color: colors.loss }]}>{goalModalError}</Text>
+            ) : null}
+
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Goal Name *</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.cardBorder, color: colors.text }]}
+              value={goalName}
+              onChangeText={setGoalName}
+              placeholder="e.g. Emergency Fund"
+              maxLength={50}
+              editable={!goalSubmitting}
+            />
+
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Target Amount</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.cardBorder, color: colors.text }]}
+              value={goalTargetAmount}
+              onChangeText={setGoalTargetAmount}
+              placeholder="10000000"
+              keyboardType="decimal-pad"
+              editable={!goalSubmitting}
+            />
+
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Icon</Text>
+            <View style={styles.currencyRow}>
+              {["flag", "wallet", "card", "cash"].map((icon) => (
+                <TouchableOpacity
+                  key={icon}
+                  style={[
+                    styles.currencyChip,
+                    goalIcon === icon && [styles.currencyChipActive, { backgroundColor: colors.primary, borderColor: colors.primary }],
+                    { borderColor: colors.cardBorder },
+                  ]}
+                  onPress={() => setGoalIcon(icon)}
+                  disabled={goalSubmitting}
+                >
+                  <Ionicons
+                    name={icon as keyof typeof Ionicons.glyphMap}
+                    size={16}
+                    color={goalIcon === icon ? colors.text : colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Color</Text>
+            <View style={styles.colorRow}>
+              {[colors.primary, colors.gain, colors.warning, colors.loss].map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorChip,
+                    { backgroundColor: color },
+                    goalColor === color && styles.colorChipActive,
+                  ]}
+                  onPress={() => setGoalColor(color)}
+                  disabled={goalSubmitting}
+                />
+              ))}
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { borderColor: colors.cardBorder }]}
+                onPress={closeCreateGoalModal}
+                disabled={goalSubmitting}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalCreateBtn,
+                  goalSubmitting && styles.modalCreateBtnDisabled,
+                  { backgroundColor: colors.primary },
+                ]}
+                onPress={submitCreateGoal}
+                disabled={goalSubmitting}
+              >
+                {goalSubmitting ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <Text style={[styles.modalCreateText, { color: colors.text }]}>Create</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designTokens.background,
   },
-  contentPad: {
+  screenPad: {
     paddingHorizontal: spacing.xl,
     marginTop: spacing.lg,
+    gap: spacing.xl,
   },
-
-  // Hero card per design token spec
   hero: {
     marginHorizontal: spacing.xl,
     marginTop: spacing.lg,
     padding: spacing["2xl"],
-    backgroundColor: designTokens.heroBg,
     borderRadius: 20,
-    shadowColor: designTokens.heroBg,
+    shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -877,20 +734,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   monthLabel: {
-    ...typography.body,
-    color: designTokens.heroText,
+    ...typography.body.regular,
+    color: "#FFFFFF",
     fontWeight: "600",
   },
   heroTitle: {
-    ...typography.caption,
-    color: designTokens.heroMuted,
+    ...typography.label.small,
+    color: "#94A3B8",
     fontWeight: "600",
     letterSpacing: 1,
   },
   heroBalance: {
     fontSize: 36,
     fontWeight: "700",
-    color: designTokens.heroText,
     marginTop: spacing.xs,
   },
   budgetRow: {
@@ -901,10 +757,14 @@ const styles = StyleSheet.create({
   },
   budgetItem: { flex: 1 },
   budgetLabel: {
-    ...typography.body,
-    color: designTokens.heroMuted,
+    ...typography.body.small,
+    color: "#94A3B8",
     fontWeight: "500",
     marginBottom: spacing.xs,
+  },
+  budgetValue: {
+    ...typography.body.regular,
+    fontWeight: "600",
   },
   budgetDivider: {
     width: 1,
@@ -923,14 +783,10 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 4,
   },
-
-  // Segmented tabs
   segmentWrap: {
     paddingHorizontal: spacing.xl,
     marginTop: spacing.lg,
   },
-
-  // KPI grid
   kpiGrid: {
     paddingHorizontal: spacing.xl,
     marginTop: spacing.lg,
@@ -938,31 +794,21 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   kpiCard: {
-    flex: 1,
-    backgroundColor: designTokens.surfaceCard,
-    borderRadius: 16,
     padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: designTokens.border,
   },
   kpiLabel: {
-    ...typography.caption,
-    color: designTokens.textSecondary,
+    ...typography.label.small,
     fontWeight: "600",
   },
   kpiValue: {
     fontSize: 28,
     fontWeight: "700",
-    color: designTokens.textPrimary,
     marginTop: spacing.xs,
   },
   kpiCaption: {
-    ...typography.caption,
-    color: designTokens.textMuted,
+    ...typography.label.small,
     marginTop: spacing.xs,
   },
-
-  // Section
   section: {
     marginTop: spacing.xl,
   },
@@ -974,68 +820,44 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    ...typography.body,
-    color: designTokens.textPrimary,
+    ...typography.body.regular,
     fontWeight: "700",
   },
   sectionAction: {
-    ...typography.caption,
-    color: designTokens.primary,
+    ...typography.label.small,
     fontWeight: "600",
   },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    backgroundColor: designTokens.primary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 12,
   },
   addBtnText: {
-    ...typography.caption,
-    color: designTokens.heroText,
+    ...typography.label.small,
     fontWeight: "600",
   },
-
-  // Empty & List cards
   emptyCard: {
-    marginHorizontal: spacing.xl,
     padding: spacing["2xl"],
-    backgroundColor: designTokens.surfaceCard,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: designTokens.border,
     alignItems: "center",
   },
   emptyCardText: {
-    ...typography.body,
-    color: designTokens.textSecondary,
+    ...typography.body.regular,
     fontWeight: "600",
     marginTop: spacing.md,
   },
   emptyCardSubtext: {
-    ...typography.caption,
-    color: designTokens.textMuted,
+    ...typography.label.small,
     marginTop: spacing.xs,
   },
-  listCard: {
-    marginHorizontal: spacing.xl,
-    backgroundColor: designTokens.surfaceCard,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: designTokens.border,
-    overflow: "hidden",
-  },
-
-  // Goal row
   goalRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     padding: spacing.base,
     borderBottomWidth: 1,
-    borderBottomColor: designTokens.borderLight,
   },
   goalLeft: {
     flexDirection: "row",
@@ -1051,27 +873,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   goalName: {
-    ...typography.body,
-    color: designTokens.textPrimary,
+    ...typography.body.regular,
     fontWeight: "600",
   },
   goalAmount: {
-    ...typography.caption,
-    color: designTokens.textSecondary,
+    ...typography.label.small,
   },
   goalPercent: {
     fontSize: 18,
     fontWeight: "700",
-    color: designTokens.textPrimary,
   },
-
-  // Loading skeleton
-  heroSkeleton: {
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.lg,
-  },
-
-  // Empty state
   emptyState: {
     flex: 1,
     justifyContent: "center",
@@ -1079,51 +890,29 @@ const styles = StyleSheet.create({
     padding: spacing["2xl"],
   },
   emptyTitle: {
-    ...typography.title,
-    color: designTokens.textPrimary,
+    ...typography.display.regular,
     marginTop: spacing.lg,
   },
   emptySubtitle: {
-    ...typography.body,
-    color: designTokens.textMuted,
+    ...typography.body.regular,
     marginTop: spacing.sm,
   },
   createWalletBtn: {
     marginTop: spacing.lg,
-    backgroundColor: designTokens.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.base,
     borderRadius: 12,
   },
   createWalletText: {
-    ...typography.button,
-    color: designTokens.heroText,
-  },
-
-  // View all card
-  viewAllCard: {
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: designTokens.surfaceCard,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  viewAllText: {
-    ...typography.body,
-    color: designTokens.primary,
+    ...typography.label.large,
     fontWeight: "600",
   },
-
-  // Create wallet modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: designTokens.surfaceCard,
     borderRadius: 20,
     padding: spacing["2xl"],
     marginHorizontal: spacing.xl,
@@ -1131,32 +920,26 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   modalTitle: {
-    ...typography.title,
-    color: designTokens.textPrimary,
+    ...typography.heading.h2,
     textAlign: "center",
     marginBottom: spacing.md,
   },
   modalError: {
-    color: designTokens.loss,
-    ...typography.caption,
+    ...typography.label.small,
     marginBottom: spacing.md,
     textAlign: "center",
   },
   modalLabel: {
-    ...typography.body,
-    color: designTokens.textSecondary,
+    ...typography.body.regular,
     fontWeight: "600",
     marginBottom: spacing.sm,
     marginTop: spacing.md,
   },
   modalInput: {
-    borderWidth: 1,
-    borderColor: designTokens.border,
     borderRadius: 12,
+    borderWidth: 1,
     padding: spacing.base,
-    ...typography.body,
-    color: designTokens.textPrimary,
-    backgroundColor: designTokens.surface,
+    ...typography.body.regular,
   },
   currencyRow: {
     flexDirection: "row",
@@ -1167,54 +950,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.base,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: designTokens.border,
-    backgroundColor: designTokens.surface,
   },
   currencyChipActive: {
-    backgroundColor: designTokens.primary,
-    borderColor: designTokens.primary,
+    borderWidth: 1,
   },
   currencyChipText: {
-    ...typography.body,
-    color: designTokens.textSecondary,
-    fontWeight: "600",
-  },
-  currencyChipTextActive: {
-    color: designTokens.heroText,
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing["2xl"],
-  },
-  modalCancelBtn: {
-    flex: 1,
-    paddingVertical: spacing.base,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: designTokens.border,
-    alignItems: "center",
-  },
-  modalCancelText: {
-    ...typography.button,
-    color: designTokens.textSecondary,
-    fontWeight: "600",
-  },
-  modalCreateBtn: {
-    flex: 1,
-    paddingVertical: spacing.base,
-    borderRadius: 12,
-    backgroundColor: designTokens.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 48,
-  },
-  modalCreateBtnDisabled: {
-    opacity: 0.6,
-  },
-  modalCreateText: {
-    ...typography.button,
-    color: designTokens.heroText,
+    ...typography.body.regular,
     fontWeight: "600",
   },
   colorRow: {
@@ -1229,11 +970,37 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   colorChipActive: {
-    borderColor: designTokens.textPrimary,
+    borderColor: "#0F172A",
   },
-
-  // Bottom spacer
-  bottomSpacer: {
-    height: 100,
+  modalActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing["2xl"],
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: spacing.base,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    ...typography.label.large,
+    fontWeight: "600",
+  },
+  modalCreateBtn: {
+    flex: 1,
+    paddingVertical: spacing.base,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 48,
+  },
+  modalCreateBtnDisabled: {
+    opacity: 0.6,
+  },
+  modalCreateText: {
+    ...typography.label.large,
+    fontWeight: "600",
   },
 });

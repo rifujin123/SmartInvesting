@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "ccs-websearch": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "D:\\GITHUB\\SmartInvestingAPI\\.ccs\\mcp\\ccs-websearch-server.cjs"
+      ],
+      "env": {}
+    },
+    "ccs-image-analysis": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "D:\\GITHUB\\SmartInvestingAPI\\.ccs\\mcp\\ccs-image-analysis-server.cjs"
+      ],
+      "env": {}
+    }
+  }
+}

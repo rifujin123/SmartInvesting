@@ -3,15 +3,15 @@ import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
-import { colors } from "../../../theme/colors";
-import { spacing } from "../../../theme/spacing";
-import { typography } from "../../../theme/typography";
+import { useTheme } from "../../../theme/ThemeContext";
+import { spacing, typography } from "../../../theme/tokens";
 import { useAuth } from "../../../context/AuthContext";
 import { ApiError } from "../../../services/api/types";
 import { profileService } from "../../../services/profile/profileService";
 
 export const PersonalInformationScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const { accessToken, user, setUser } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -89,35 +89,35 @@ export const PersonalInformationScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
+          <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surface }]} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Personal Information</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Personal Information</Text>
           <View style={styles.headerSpacer} />
         </View>
 
-        <View style={styles.formSection}>
+        <View style={[styles.formSection, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.avatarBlock}>
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
             ) : (
-              <View style={styles.avatar}>
+              <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                 <Ionicons name="person" size={36} color="#FFFFFF" />
               </View>
             )}
-            <Text style={styles.name}>{displayName}</Text>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handlePickAvatar} activeOpacity={0.8}>
-              <Ionicons name="image" size={18} color={colors.figma.primary} />
-              <Text style={styles.secondaryButtonText}>Change Avatar</Text>
+            <Text style={[styles.name, { color: colors.text }]}>{displayName}</Text>
+            <TouchableOpacity style={[styles.secondaryButton, { borderColor: colors.primary }]} onPress={handlePickAvatar} activeOpacity={0.8}>
+              <Ionicons name="image" size={18} color={colors.primary} />
+              <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Change Avatar</Text>
             </TouchableOpacity>
           </View>
 
           {(message || error) && (
-            <View style={[styles.banner, error ? styles.errorBanner : styles.successBanner]}>
-              <Text style={[styles.bannerText, error ? styles.errorText : styles.successText]}>
+            <View style={[styles.banner, error ? styles.errorBanner : styles.successBanner, { borderColor: error ? colors.loss : colors.gain }]}>
+              <Text style={[styles.bannerText, { color: error ? colors.loss : colors.gain }]}>
                 {error ?? message}
               </Text>
             </View>
@@ -141,12 +141,15 @@ interface ProfileInputProps {
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
 }
 
-const ProfileInput: React.FC<ProfileInputProps> = ({ label, ...props }) => (
-  <View style={styles.inputGroup}>
-    <Text style={styles.inputLabel}>{label}</Text>
-    <TextInput style={styles.input} placeholderTextColor={colors.textMuted} {...props} />
-  </View>
-);
+const ProfileInput: React.FC<ProfileInputProps> = ({ label, ...props }) => {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <TextInput style={[styles.input, { borderColor: colors.cardBorder, color: colors.text, backgroundColor: colors.surface }]} placeholderTextColor={colors.textTertiary} {...props} />
+    </View>
+  );
+};
 
 interface PrimaryButtonProps {
   label: string;
@@ -154,21 +157,21 @@ interface PrimaryButtonProps {
   onPress: () => void;
 }
 
-const PrimaryButton: React.FC<PrimaryButtonProps> = ({ label, disabled, onPress }) => (
-  <TouchableOpacity style={[styles.primaryButton, disabled && styles.disabledButton]} onPress={onPress} disabled={disabled} activeOpacity={0.8}>
-    <Text style={styles.primaryButtonText}>{label}</Text>
-  </TouchableOpacity>
-);
+const PrimaryButton: React.FC<PrimaryButtonProps> = ({ label, disabled, onPress }) => {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary }, disabled && styles.disabledButton]} onPress={onPress} disabled={disabled} activeOpacity={0.8}>
+      <Text style={styles.primaryButtonText}>{label}</Text>
+    </TouchableOpacity>
+  );
+};
 
 function getErrorMessage(err: unknown, fallback: string) {
   return err instanceof ApiError ? err.getDisplayMessage(fallback) : fallback;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -176,30 +179,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing["2xl"] + spacing.xl,
     paddingBottom: spacing.lg,
-    backgroundColor: colors.surfaceCard,
+    borderBottomWidth: 1,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.surface,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
   },
-  headerTitle: {
-    ...typography.sectionHeader,
-    color: colors.textPrimary,
-  },
-  headerSpacer: {
-    width: 40,
-  },
+  headerTitle: { ...typography.sectionHeader },
+  headerSpacer: { width: 40 },
   formSection: {
     margin: spacing.xl,
     padding: spacing.lg,
-    backgroundColor: colors.surfaceCard,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   avatarBlock: {
     alignItems: "center",
@@ -209,7 +204,6 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.figma.primary,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -217,13 +211,8 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.surface,
   },
-  name: {
-    ...typography.title,
-    color: colors.textPrimary,
-    marginTop: spacing.base,
-  },
+  name: { ...typography.title, marginTop: spacing.base },
   secondaryButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -233,64 +222,31 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.figma.primary,
   },
-  secondaryButtonText: {
-    ...typography.button,
-    color: colors.figma.primary,
-  },
+  secondaryButtonText: { ...typography.button },
   banner: {
     marginBottom: spacing.base,
     padding: spacing.base,
     borderRadius: 12,
     borderWidth: 1,
   },
-  successBanner: {
-    backgroundColor: "#DCFCE7",
-    borderColor: "#BBF7D0",
-  },
-  errorBanner: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#FECACA",
-  },
-  bannerText: {
-    ...typography.body,
-  },
-  successText: {
-    color: colors.success,
-  },
-  errorText: {
-    color: colors.loss,
-  },
-  inputGroup: {
-    marginBottom: spacing.base,
-  },
-  inputLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
+  successBanner: { backgroundColor: "rgba(74,222,128,0.12)" },
+  errorBanner: { backgroundColor: "rgba(251,113,133,0.12)" },
+  bannerText: { ...typography.body.regular },
+  inputGroup: { marginBottom: spacing.base },
+  inputLabel: { ...typography.caption, marginBottom: spacing.xs },
   input: {
-    ...typography.body,
-    color: colors.textPrimary,
-    backgroundColor: colors.surface,
+    ...typography.body.regular,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.base,
   },
   primaryButton: {
-    backgroundColor: colors.figma.primary,
     borderRadius: 12,
     paddingVertical: spacing.base,
     alignItems: "center",
   },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
-    ...typography.button,
-    color: "#FFFFFF",
-  },
+  disabledButton: { opacity: 0.6 },
+  primaryButtonText: { ...typography.button, color: "#FFFFFF" },
 });

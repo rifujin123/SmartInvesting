@@ -10,6 +10,7 @@ export type AuthStackParamList = {
 
 export type AppTabParamList = {
   Dashboard: undefined;
+  Discovery: undefined;
   Finance: undefined;
   Portfolio: undefined;
   Transactions: undefined;
@@ -18,6 +19,7 @@ export type AppTabParamList = {
 export type AppStackParamList = {
   MainTabs: undefined;
   BuyAssets: { initialAssetType?: AssetType };
+  AssetDetail: { ticker: string };
   GoalDetail: { goalId: number };
   BudgetDetail: { budgetId: number };
   Profile: undefined;

@@ -12,9 +12,8 @@ import {
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { colors } from "../../../theme/colors";
-import { spacing } from "../../../theme/spacing";
-import { typography } from "../../../theme/typography";
+import { useTheme } from "../../../theme/ThemeContext";
+import { spacing, typography } from "../../../theme/tokens";
 import { useAuth } from "../../../context/AuthContext";
 import { financeService } from "../../../services/finance/financeService";
 import { GoalDto } from "../../../services/finance/types";
@@ -29,6 +28,7 @@ const formatDeadline = (deadline: string | null) => {
 };
 
 export const GoalDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { colors } = useTheme();
   const { accessToken } = useAuth();
   const [goal, setGoal] = useState<GoalDto | null>(null);
   const [amount, setAmount] = useState("");
@@ -94,23 +94,23 @@ export const GoalDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surface }]} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Goal Detail</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Goal Detail</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       {isLoading ? (
         <View style={styles.centerState}>
-          <ActivityIndicator color={colors.figma.primary} />
+          <ActivityIndicator color={colors.primary} />
         </View>
       ) : !goal ? (
         <View style={styles.centerState}>
-          <Text style={styles.errorText}>{error ?? "Goal not found"}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => loadGoal()}>
+          <Text style={[styles.errorText, { color: colors.loss }]}>{error ?? "Goal not found"}</Text>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.primary }]} onPress={() => loadGoal()}>
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -121,52 +121,56 @@ export const GoalDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <RefreshControl refreshing={isRefreshing} onRefresh={() => loadGoal("refresh")} />
           }
         >
-          {error ? <Text style={styles.inlineError}>{error}</Text> : null}
+          {error ? <Text style={[styles.inlineError, { color: colors.loss }]}>{error}</Text> : null}
 
-          <View style={[styles.heroCard, { backgroundColor: goal.color || "#DBEAFE" }]}>
+          <View style={[styles.heroCard, { backgroundColor: goal.color || colors.accentSubtle, borderColor: colors.cardBorder }]}>
             <View style={styles.goalIcon}>
-              <Ionicons name={(goal.icon || "flag") as keyof typeof Ionicons.glyphMap} size={28} color={colors.textPrimary} />
+              <Ionicons name={(goal.icon || "flag") as keyof typeof Ionicons.glyphMap} size={28} color={colors.text} />
             </View>
-            <Text style={styles.goalName}>{goal.name}</Text>
-            <Text style={styles.deadline}>Target: {formatDeadline(goal.deadline)}</Text>
-            {goal.isCompleted ? <Text style={styles.completedBadge}>Completed</Text> : null}
+            <Text style={[styles.goalName, { color: colors.text }]}>{goal.name}</Text>
+            <Text style={[styles.deadline, { color: colors.textSecondary }]}>Target: {formatDeadline(goal.deadline)}</Text>
+            {goal.isCompleted ? <Text style={[styles.completedBadge, { color: colors.gain }]}>Completed</Text> : null}
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Saved</Text>
-                <Text style={styles.statValue}>{formatCurrency(Number(goal.currentAmount))}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Saved</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{formatCurrency(Number(goal.currentAmount))}</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Target</Text>
-                <Text style={styles.statValue}>{formatCurrency(Number(goal.targetAmount))}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Target</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{formatCurrency(Number(goal.targetAmount))}</Text>
               </View>
             </View>
 
             <View style={styles.progressHeader}>
-              <Text style={styles.progressLabel}>Progress</Text>
-              <Text style={styles.progressValue}>{Number(goal.progressPercent || progress).toFixed(0)}%</Text>
+              <Text style={[styles.progressLabel, { color: colors.text }]}>Progress</Text>
+              <Text style={[styles.progressValue, { color: colors.primary }]}>{Number(goal.progressPercent || progress).toFixed(0)}%</Text>
             </View>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${progress}%` }]} />
+            <View style={[styles.progressBar, { backgroundColor: colors.surface }]}>
+              <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.primary }]} />
             </View>
-            <Text style={styles.remainingText}>{formatCurrency(remaining)} remaining</Text>
+            <Text style={[styles.remainingText, { color: colors.textSecondary }]}>{formatCurrency(remaining)} remaining</Text>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Add Contribution</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Add Contribution</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.cardBorder, color: colors.text }]}
               placeholder="0.00"
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={colors.textTertiary}
               keyboardType="decimal-pad"
               value={amount}
               onChangeText={setAmount}
             />
             <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+              style={[
+                styles.submitButton,
+                { backgroundColor: colors.primary },
+                isSubmitting && styles.submitButtonDisabled,
+              ]}
               onPress={handleContribution}
               disabled={isSubmitting}
             >
@@ -180,7 +184,7 @@ export const GoalDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -188,34 +192,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing["2xl"],
     paddingBottom: spacing.base,
-    backgroundColor: colors.surfaceCard,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: { ...typography.sectionHeader, color: colors.textPrimary },
+  headerTitle: { ...typography.sectionHeader },
   headerSpacer: { width: 40 },
   content: { padding: spacing.xl, paddingBottom: 120 },
   centerState: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl },
   inlineError: {
     ...typography.caption,
-    color: colors.loss,
     backgroundColor: "#FEF2F2",
     borderRadius: 12,
     padding: spacing.base,
     marginBottom: spacing.base,
   },
-  errorText: { ...typography.body, color: colors.loss, textAlign: "center" },
+  errorText: { ...typography.body.regular, textAlign: "center" },
   retryButton: {
     marginTop: spacing.base,
-    backgroundColor: colors.figma.primary,
     borderRadius: 12,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -226,7 +225,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.border,
   },
   goalIcon: {
     width: 64,
@@ -237,50 +235,43 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: spacing.base,
   },
-  goalName: { ...typography.title, color: colors.textPrimary, textAlign: "center" },
-  deadline: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
+  goalName: { ...typography.title, textAlign: "center" },
+  deadline: { ...typography.caption, marginTop: spacing.xs },
   completedBadge: {
     marginTop: spacing.md,
-    color: colors.success,
     fontWeight: "700",
   },
   card: {
-    backgroundColor: colors.surfaceCard,
     borderRadius: 16,
     padding: spacing.base,
     borderWidth: 1,
-    borderColor: colors.border,
     marginTop: spacing.base,
   },
   statsRow: { flexDirection: "row", alignItems: "center" },
   statItem: { flex: 1, alignItems: "center" },
-  statLabel: { ...typography.caption, color: colors.textSecondary },
-  statValue: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, marginTop: spacing.xs },
-  divider: { width: 1, height: 40, backgroundColor: colors.border },
+  statLabel: { ...typography.caption },
+  statValue: { fontSize: 16, fontWeight: "700", marginTop: spacing.xs },
+  divider: { width: 1, height: 40 },
   progressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
-  progressLabel: { ...typography.body, fontWeight: "600", color: colors.textPrimary },
-  progressValue: { ...typography.body, fontWeight: "700", color: colors.figma.primary },
-  progressBar: { height: 10, borderRadius: 5, backgroundColor: colors.surface, overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 5, backgroundColor: colors.figma.primary },
-  remainingText: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.sm },
-  sectionTitle: { ...typography.sectionHeader, color: colors.textPrimary, marginBottom: spacing.base },
+  progressLabel: { ...typography.body.regular, fontWeight: "600" },
+  progressValue: { ...typography.body.regular, fontWeight: "700" },
+  progressBar: { height: 10, borderRadius: 5, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 5 },
+  remainingText: { ...typography.caption, marginTop: spacing.sm },
+  sectionTitle: { ...typography.sectionHeader, marginBottom: spacing.base },
   input: {
-    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
     fontSize: 16,
-    color: colors.textPrimary,
   },
   submitButton: {
-    backgroundColor: colors.figma.primary,
     borderRadius: 12,
     alignItems: "center",
     paddingVertical: spacing.base,
